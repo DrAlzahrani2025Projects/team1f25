@@ -1,21 +1,11 @@
-# Team1 Proxy + App + Jupyter
-
-This project uses **Docker Compose** to run:
-
-- **Apache HTTPD** as a reverse proxy  
-- **Team1 App** (Flask + Gunicorn) serving “Hello, World!”  
-- **JupyterLab** environment, proxied behind Apache  
-
----
-
-## 🔧 Prerequisites
+## Prerequisites
 
 Before you begin, ensure you have the following:
 
 1. **Git**: [Install Git](https://git-scm.com/) from its official website.
 2. **Docker**: [Install Docker](https://www.docker.com) from its official website.
 3. **Linux/MacOS**: No extra setup needed.
-4. **Windows**: Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) and enable Docker's WSL integration by following [this guide](https://docs.docker.com/desktop/windows/wsl/).  
+4. **Windows**: Install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) and enable Docker's WSL integration by following [this guide](https://docs.docker.com/desktop/windows/wsl/).
 
 ---
 
@@ -59,91 +49,36 @@ Run the setup script to build and start the Docker container:
 chmod +x docker-setup.sh
 ```
 
-### ▶️ Setup
+### Step 6: Run Build Script (enter your Groq API Key when prompted):
 
-To build and start everything:
-
-```bash
+```
 ./docker-setup.sh
 ```
 
-This will:
-
-- Stop any existing containers  
-- Rebuild images  
-- Start all services in the background  
-
-When it finishes, you’ll see URLs like:
-
-- Team1 App → [http://localhost:2501/team1/](http://localhost:2501/team1/)  
-- Team1 Jupyter → [http://localhost:2501/team1/jupyter/](http://localhost:2501/team1/jupyter/)  
-
-> 🔐 Note: Jupyter is configured **without a token/password**, only accessible through the proxy on port `2501`.
-
----
-
-### Access the Chatbot
+### Step 7: Access the Chatbot
 
 For Streamlit:
 
 - Once the container starts, Open browser at 
+  
 
-### 🛑 Cleanup
+### Step 8: Run the script to stop and remove the Docker image and container :
 
-To stop and remove containers, networks, and orphans:
-
-```bash
+```
 ./docker-cleanup.sh
 ```
 
 ---
 
-## 📂 Project Structure
+### Hosted on CSE department web server
 
-```
-.
-├── apache/
-│   ├── httpd.conf          # Base Apache config
-│   └── team1.conf          # VirtualHost & proxy rules
-├── team1-app/
-│   ├── Dockerfile          # Builds the Flask app container
-│   └── app.py              # Hello World app
-├── team1-notebooks/        # Jupyter working directory (mounted)
-├── docker-compose.yml      # Service definitions
-├── docker-setup.sh         # Setup helper script
-└── docker-cleanup.sh       # Cleanup helper script
-```
+For Streamlit:
 
----
+Open browser at  
 
-## ⚙️ Useful Commands
+## Google Colab Notebook  
 
-- See logs:
-  ```bash
-  docker-compose logs -f
-  ```
+We have integrated a Google Colab notebook for easy access and execution.
 
-- Restart just the proxy:
-  ```bash
-  docker-compose restart proxy
-  ```
+[Open in Colab]()
 
-- Rebuild only the app:
-  ```bash
-  docker-compose up -d --build team1-app
-  ```
-
----
-
-## ✅ Health Check
-
-The Team1 app exposes a health endpoint:
-
-```bash
-curl http://localhost:2501/team1/health
-# -> {"ok": true}
-```
-
----
-
-Happy coding 🎉
