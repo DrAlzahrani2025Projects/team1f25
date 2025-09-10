@@ -46,13 +46,13 @@ git pull origin main
 Run the setup script to build and start the Docker container:
 
 ```
-chmod +x docker-launch.sh docker-clean.sh
+chmod +x docker-setup.sh
 ```
 
 ### Step 6: Run Build Script (enter your Groq API Key when prompted):
 
 ```
-./docker-launch.sh
+./docker-setup.sh
 ```
 
 ### Step 7: Access the Chatbot
