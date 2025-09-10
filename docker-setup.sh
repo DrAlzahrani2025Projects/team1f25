@@ -5,13 +5,13 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "🛑 Stopping any existing containers..."
-docker-compose down --remove-orphans
+docker compose down --remove-orphans
 
 echo "🔨 Building fresh images..."
-docker-compose build --no-cache
+docker compose build --no-cache
 
 echo "🚀 Starting services..."
-docker-compose up -d
+docker compose up -d
 
 echo ""
 echo "✅ Setup complete. Services are running."
