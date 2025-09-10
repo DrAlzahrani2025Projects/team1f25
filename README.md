@@ -46,20 +46,20 @@ git pull origin main
 Run the setup script to build and start the Docker container:
 
 ```
-chmod +x docker-setup.sh
+chmod +x docker-launch.sh docker-clean.sh
 ```
 
 ### Step 6: Run Build Script (enter your Groq API Key when prompted):
 
 ```
-./docker-setup.sh
+./docker-launch.sh
 ```
 
 ### Step 7: Access the Chatbot
 
 For Streamlit:
 
-- Once the container starts, Open browser at 
+- Once the container starts, Open browser at http://localhost:2501/team1f25
   
 
 ### Step 8: Run the script to stop and remove the Docker image and container :
@@ -74,7 +74,7 @@ For Streamlit:
 
 For Streamlit:
 
-Open browser at  
+Open browser at https://sec.cse.csysb.edu/team1f25 
 
 ## Google Colab Notebook  
 
