@@ -5,6 +5,6 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "Stopping and removing containers, networks, and volumes for this project..."
-docker-compose down --remove-orphans
+docker compose down --remove-orphans
 
 echo "✅ Cleanup complete."
