@@ -74,7 +74,7 @@ For Streamlit:
 
 For Streamlit:
 
-Open browser at https://sec.cse.csusb.edu/team1f25 
+Open browser at https://sec.cse.csusb.edu/team1f25/ 
 
 ## Google Colab Notebook  
 
