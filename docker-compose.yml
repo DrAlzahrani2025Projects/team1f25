@@ -6,26 +6,27 @@ services:
     ports:
       - "2501:80"              # use http://localhost:2501
     depends_on:
-      - team1-app
-      - team1-jupyter
+      - team1f25-app
+      - team1f25-jupyter
     volumes:
       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
-      - ./apache/team1.conf:/usr/local/apache2/conf/extra/team1.conf:ro
+      - ./apache/team1f25.conf:/usr/local/apache2/conf/extra/team1f25.conf:ro
     networks:
       appnet: {}
 
-  team1-app:
-    build: ./team1-app
+  team1f25-app:
+    image: team1f25-app
+    build: team1f25-app
     expose: ["5001"]
     networks:
       appnet:
-        aliases: ["team1-app"]
+        aliases: ["team1f25-app"]
 
-  team1-jupyter:
+  team1f25-jupyter:
     image: jupyter/base-notebook:python-3.11
     command: >
       start-notebook.sh
-      --ServerApp.base_url=/team1/jupyter/
+      --ServerApp.base_url=/team1f25/jupyter/
       --ServerApp.trust_xheaders=True
       --ServerApp.ip=0.0.0.0
       --ServerApp.port=8888
@@ -34,11 +35,11 @@ services:
     environment:
       - JUPYTER_ENABLE_LAB=yes
     volumes:
-      - ./team1-notebooks:/home/jovyan/work
+      - ./team1f25-notebooks:/home/jovyan/work
     expose: ["8888"]
     networks:
       appnet:
-        aliases: ["team1-jupyter"]
+        aliases: ["team1f25-jupyter"]
 
 networks:
   appnet:
