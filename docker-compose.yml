@@ -15,6 +15,7 @@ services:
       appnet: {}
 
   team1f25-app:
+    image: team1f25-app
     build: team1f25-app
     expose: ["5001"]
     networks:
