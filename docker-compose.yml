@@ -3,22 +3,24 @@ version: "3.9"
 services:
   proxy:
     image: httpd:2.4
+    container_name: team1f25-proxy
     ports:
-      - "2501:443"              # use https://localhost:2501
+      - "80:80"     # HTTP -> redirects to HTTPS
+      - "443:443"   # HTTPS
     depends_on:
       - team1f25-app
       - team1f25-jupyter
     volumes:
       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+      - ./apache/ssl.conf:/usr/local/apache2/conf/extra/ssl.conf:ro
       - ./apache/team1f25.conf:/usr/local/apache2/conf/extra/team1f25.conf:ro
-      - ./apache/ssl.conf:/usr/local/apache2/conf/extra/ssl.conf:ro   # Add SSL config
-      - ./apache/certs:/usr/local/apache2/certs:ro                    # Add certs
+      - ./apache/certs:/usr/local/apache2/certs:ro
     networks:
       appnet: {}
 
   team1f25-app:
-    image: team1f25-app
-    build: team1f25-app
+    build: ./team1f25-app
+    container_name: team1f25-app
     expose: ["5001"]
     networks:
       appnet:
@@ -26,6 +28,7 @@ services:
 
   team1f25-jupyter:
     image: jupyter/base-notebook:python-3.11
+    container_name: team1f25-jupyter
     command: >
       start-notebook.sh
       --ServerApp.base_url=/team1f25/jupyter/
