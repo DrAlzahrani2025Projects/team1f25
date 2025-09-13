@@ -4,13 +4,15 @@ services:
   proxy:
     image: httpd:2.4
     ports:
-      - "2501:80"              # use http://localhost:2501
+      - "2501:443"              # use https://localhost:2501
     depends_on:
       - team1f25-app
       - team1f25-jupyter
     volumes:
       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
       - ./apache/team1f25.conf:/usr/local/apache2/conf/extra/team1f25.conf:ro
+      - ./apache/ssl.conf:/usr/local/apache2/conf/extra/ssl.conf:ro   # Add SSL config
+      - ./apache/certs:/usr/local/apache2/certs:ro                    # Add certs
     networks:
       appnet: {}
 
