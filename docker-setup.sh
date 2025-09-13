@@ -4,19 +4,23 @@ set -euo pipefail
 # Navigate to the directory containing this script (so it works from anywhere)
 cd "$(dirname "$0")"
 
-echo "🛑 Stopping any existing containers..."
-docker compose down --remove-orphans
+# stop and remove any existing container named team1f25-app-container
+if [ "$(docker ps -aq -f name=team1f25-app-container)" ]; then
+    echo "Stopping and removing existing container..."
+    docker stop team1f25-app-container
+    docker rm team1f25-app-container
+fi
 
-echo "🔨 Building fresh images..."
-docker compose build --no-cache
+# remove any existing image named team1f25-app
+if [ "$(docker images -q team1f25-app)" ]; then
+    echo "Removing existing image..."
+    docker rmi team1f25-app
+fi
 
-echo "🚀 Starting services..."
-docker compose up -d
+# docker build image team1f25-app
+echo "Building Docker image for the application..."
+docker build -t team1f25-app -f team1f25-app/Dockerfile team1f25-app
 
-echo ""
-echo "✅ Setup complete. Services are running."
-echo ""
-echo "You can now access your apps at:"
-echo "  • Team1f25 App:       http://sec.cse.csusb.edu/team1f25"
-echo "  • Team1f25 Jupyter:   http://sec.cse.csusb.edu/team1f25/jupyter"
-echo ""
+# docker run container from image team1f25-app in port 5001
+echo "Running Docker container for the application on port 5001..."
+docker run -d -p 5001:5001 --name team1f25-app-container team1f25-app:latest
