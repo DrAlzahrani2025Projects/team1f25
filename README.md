@@ -59,7 +59,7 @@ chmod +x docker-setup.sh
 
 For Streamlit:
 
-- Once the container starts, Open browser at http://localhost:2501/team1f25
+- Once the container starts, Open browser at http://localhost:5001/team1f25
   
 
 ### Step 8: Run the script to stop and remove the Docker image and container :

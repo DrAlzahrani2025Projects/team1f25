@@ -4,7 +4,15 @@ set -euo pipefail
 # Navigate to the directory containing this script (so it works from anywhere)
 cd "$(dirname "$0")"
 
-echo "Stopping and removing containers, networks, and volumes for this project..."
-docker compose down --remove-orphans
+# stop and remove any container named team1f25-app-container and its dependencies
+if [ "$(docker ps -q -f name=team1f25-app-container)" ]; then
+    echo "Stopping container team1f25-app-container..."
+    docker stop team1f25-app-container
+    docker rm team1f25-app-container
+fi
 
-echo "✅ Cleanup complete."
+# remove any image named team1f25-app
+if [ "$(docker images -q team1f25-app)" ]; then
+    echo "Removing image team1f25-app..."
+    docker rmi team1f25-app
+fi
