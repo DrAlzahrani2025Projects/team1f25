@@ -4,19 +4,20 @@ services:
   proxy:
     image: httpd:2.4
     container_name: team1f25-proxy
-    ports:
-      - "80:80"     # HTTP -> redirects to HTTPS
-      - "443:443"   # HTTPS
     depends_on:
       - team1f25-app
       - team1f25-jupyter
+    ports:
+      # Map host HTTPS port -> container 443.
+      # Local default is 2501; set HTTPS_PORT=443 in prod.
+      - "${HTTPS_PORT:-2501}:443"
     volumes:
       - ./apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
       - ./apache/ssl.conf:/usr/local/apache2/conf/extra/ssl.conf:ro
       - ./apache/team1f25.conf:/usr/local/apache2/conf/extra/team1f25.conf:ro
-      - ./apache/certs:/usr/local/apache2/certs:ro
-    networks:
-      appnet: {}
+      # Mount cert bundle directory (switch by CERT_DIR)
+      - ./apache/certs/${CERT_DIR:-local}:/usr/local/apache2/certs:ro
+    networks: { appnet: {} }
 
   team1f25-app:
     build: ./team1f25-app
@@ -37,8 +38,7 @@ services:
       --ServerApp.port=8888
       --ServerApp.token=''
       --ServerApp.password=''
-    environment:
-      - JUPYTER_ENABLE_LAB=yes
+    environment: [ "JUPYTER_ENABLE_LAB=yes" ]
     volumes:
       - ./team1f25-notebooks:/home/jovyan/work
     expose: ["8888"]
@@ -47,5 +47,4 @@ services:
         aliases: ["team1f25-jupyter"]
 
 networks:
-  appnet:
-    driver: bridge
+  appnet: { driver: bridge }
