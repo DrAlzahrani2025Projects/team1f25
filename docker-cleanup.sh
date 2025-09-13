@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Navigate to the directory containing this script (so it works from anywhere)
+# Run from this script's directory
 cd "$(dirname "$0")"
 
-# stop and remove any container named team1f25-app-container and its dependencies
-if [ "$(docker ps -q -f name=team1f25-app-container)" ]; then
-    echo "Stopping container team1f25-app-container..."
-    docker stop team1f25-app-container
-    docker rm team1f25-app-container
+echo "🧹 Cleaning up team1f25-app ..."
+
+# Remove the named container if it exists
+docker rm -f team1f25-app-container >/dev/null 2>&1 || true
+
+# Remove any containers created from the image
+ids="$(docker ps -aq --filter ancestor=team1f25-app || true)"
+if [ -n "${ids}" ]; then
+  docker rm -f ${ids}
 fi
 
-# remove any image named team1f25-app
-if [ "$(docker images -q team1f25-app)" ]; then
-    echo "Removing image team1f25-app..."
-    docker rmi team1f25-app
-fi
+# Remove the image if it exists
+docker rmi -f team1f25-app >/dev/null 2>&1 || true
+
+echo "✅ Done."
