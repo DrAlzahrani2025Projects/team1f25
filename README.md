@@ -55,7 +55,7 @@ chmod +x docker-setup.sh
 ./docker-setup.sh
 ```
 
-### Step 7: Access the Chatbot
+### Step 7: Access AI Agent
 
 For Streamlit:
 
