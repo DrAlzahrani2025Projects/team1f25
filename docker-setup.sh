@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Build and run the team1f25 Streamlit Docker app
+# Exit on error (-e), unset var (-u), fail in pipelines (-o pipefail)
 set -euo pipefail
 
 # Run from this script's directory
