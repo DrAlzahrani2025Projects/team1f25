@@ -7,31 +7,30 @@ DOCKER_CONTAINER_NAME="team1f25-app-container"
 DOCKER_APP_PORT="5001"
 DOCKER_WORKDIR="./team1f25-app"
 
-echo "--- Starting Docker application management ---"
+CLEANUP_SCRIPT="docker-cleanup.sh"
 
-if [ ! -d "$DOCKER_WORKDIR" ]; then
-  echo "Error: Directory '$DOCKER_WORKDIR' not found. Exiting."
+if [[ ! -d "${DOCKER_WORKDIR}" ]]; then
+  echo "Error: Directory '${DOCKER_WORKDIR}' not found. Exiting."
   exit 1
 fi
 
-cd "$DOCKER_WORKDIR"
-
-echo "🧹 Cleaning old container(s) and image..."
-docker rm -f "$DOCKER_CONTAINER_NAME" >/dev/null 2>&1 || true
-ids="$(docker ps -aq --filter ancestor="$DOCKER_APP_IMAGE" || true)"
-if [ -n "${ids}" ]; then
-  docker rm -f ${ids} >/dev/null 2>&1 || true
+# Run cleanup before building
+if [[ -x "${CLEANUP_SCRIPT}" ]]; then
+  "./${CLEANUP_SCRIPT}" "${DOCKER_APP_IMAGE}" "${DOCKER_CONTAINER_NAME}"
+else
+  echo "Warning: Cleanup script not found or not executable at '${CLEANUP_SCRIPT}'. Skipping cleanup."
 fi
-docker rmi -f "$DOCKER_APP_IMAGE" >/dev/null 2>&1 || true
 
-echo "🔨 Building image $DOCKER_APP_IMAGE..."
-docker build -t "$DOCKER_APP_IMAGE" .
+cd "${DOCKER_WORKDIR}"
 
-echo "🚀 Running container $DOCKER_CONTAINER_NAME on :$DOCKER_APP_PORT..."
+echo "🔨 Building image ${DOCKER_APP_IMAGE}..."
+docker build -t "${DOCKER_APP_IMAGE}" .
+
+echo "🚀 Running container ${DOCKER_CONTAINER_NAME} on :${DOCKER_APP_PORT}..."
 docker run -d --restart unless-stopped \
-  --name "$DOCKER_CONTAINER_NAME" \
-  -p "$DOCKER_APP_PORT":"$DOCKER_APP_PORT" \
-  "$DOCKER_APP_IMAGE":latest
+  --name "${DOCKER_CONTAINER_NAME}" \
+  -p "${DOCKER_APP_PORT}:${DOCKER_APP_PORT}" \
+  "${DOCKER_APP_IMAGE}:latest"
 
 echo "✅ Docker setup complete."
 cd - >/dev/null 2>&1

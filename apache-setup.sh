@@ -1,93 +1,127 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- Apache Configuration ---
-PROXY_DOMAIN="sec.cse.csusb.edu"
-PROXY_PATH="/team1f25"
-DOCKER_APP_PORT="5001"
+# --- Paths ---
+SITES_DIR="/etc/apache2/sites-available"
+NEW_BLOCK_FILE="./apache-proxy.conf"
 
-SITES_AVAILABLE_DIR="/etc/apache2/sites-available"
+# --- Helpers ---
+require_root() {
+  if [[ ${EUID} -ne 0 ]]; then
+    echo "Please run as root (sudo)." >&2
+    exit 1
+  fi
+}
 
-# Path to the new configuration block file
-NEW_BLOCK_FILE="./apache-proxy-team1f25.conf"
+install_deps() {
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update -y
+    apt-get install -y apache2 apache2-utils perl grep coreutils
+  fi
+}
 
-# Must be root for a2enmod / editing vhost / reload
-if [ "$EUID" -ne 0 ]; then
-  echo "Error: Apache configuration requires root. Please run with sudo."
-  exit 1
-fi
+ensure_tools() {
+  for cmd in perl grep cp date apachectl systemctl a2enmod; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+      echo "Missing required command: $cmd" >&2
+      exit 127
+    fi
+  done
+}
 
-echo "--- Locating HTTPS VirtualHost for ${PROXY_DOMAIN} ---"
-CONFIG_FILE="$(grep -l -R "${PROXY_PATH}" "$SITES_AVAILABLE_DIR" 2>/dev/null | head -n 1)"
-if [ -z "${CONFIG_FILE}" ]; then
-  echo "Error: Could not find an Apache HTTPS VirtualHost file for ${PROXY_DOMAIN} with path ${PROXY_PATH}."
-  echo "Ensure certs exist and the vhost is under ${SITES_AVAILABLE_DIR}."
-  exit 1
-fi
-echo "Found: ${CONFIG_FILE}"
+read_new_block() {
+  if [[ ! -f "$NEW_BLOCK_FILE" || ! -s "$NEW_BLOCK_FILE" ]]; then
+    echo "Error: New block file '$NEW_BLOCK_FILE' not found or empty." >&2
+    exit 1
+  fi
+}
 
-echo "--- Enabling required Apache modules ---"
-a2enmod proxy proxy_http proxy_wstunnel rewrite headers ssl >/dev/null
+backup_file() {
+  local file="$1"
+  local ts
+  ts="$(date +%Y%m%d-%H%M%S)"
+  cp -p -- "$file" "${file}.bak.${ts}"
+  echo "  ↳ Backup: ${file}.bak.${ts}"
+}
 
-# Read the content of the new block from the external file
-if [ ! -f "${NEW_BLOCK_FILE}" ]; then
-  echo "Error: Configuration file not found: ${NEW_BLOCK_FILE}"
-  exit 1
-fi
-# Using mapfile to read the file contents correctly into an array
-mapfile -t NEW_BLOCK_ARRAY < "${NEW_BLOCK_FILE}"
-# Join the array elements with newlines to form a single string
-NEW_BLOCK=$(printf "%s\n" "${NEW_BLOCK_ARRAY[@]}")
+replace_vhost_block_in_file() {
+  local file="$1"
+  NEW_PATH="$NEW_BLOCK_FILE" \
+  perl -0777 -i -pe '
+    BEGIN {
+      sub slurp {
+        my ($p) = @_;
+        open my $fh, "<", $p or die "Cannot open $p: $!";
+        local $/; <$fh>
+      }
+      $new = slurp($ENV{NEW_PATH});
 
-# Define the backup filename here, after CONFIG_FILE is found
-BACKUP_FILE="${CONFIG_FILE}.bak.$(date +%Y%m%d-%H%M%S)"
+      # Escape replacement metachars so they stay literal in the file
+      $new =~ s/\\/\\\\/g;   # backslashes
+      $new =~ s/\$/\$\$/g;   # dollar signs ($1 etc.)
+    }
 
-echo "--- Backing up vhost file ---"
-cp -a "${CONFIG_FILE}" "${BACKUP_FILE}"
+    # Replace ALL 443 vhost blocks in this file.
+    # If you want ONLY the first one, change s///g to s/// (no g).
+    s!<VirtualHost\s+\*:443\b>.*?</VirtualHost>!$new!gs;
+  ' -- "$file"
+}
 
-LEGACY_HEADER_LINE='########################################'
-LEGACY_TITLE_LINE='# Streamlit reverse proxy for team1f25'
-NEW_MARKER='# --- Streamlit reverse proxy for team1f25 ---'
+enable_modules() {
+  a2enmod ssl >/dev/null 2>&1 || true
+  a2enmod proxy >/dev/null 2>&1 || true
+  a2enmod proxy_http >/dev/null 2>&1 || true
+  a2enmod proxy_wstunnel >/dev/null 2>&1 || true
+  a2enmod headers >/dev/null 2>&1 || true
+  a2enmod rewrite >/dev/null 2>&1 || true
+}
 
-# Use a flag to track if a successful replacement occurred
-REPLACEMENT_SUCCESSFUL=0
+validate_and_reload() {
+  echo "🔎 apachectl configtest..."
+  if apachectl configtest; then
+    echo "✅ Config OK. Reloading Apache..."
+    systemctl reload apache2 || {
+      echo "Reload failed; trying restart..."
+      systemctl restart apache2
+    }
+    echo "✅ Apache reloaded."
+  else
+    echo "❌ Config test failed. Backups were kept. No reload performed." >&2
+    exit 1
+  fi
+}
 
-if grep -qF "${NEW_MARKER}" "${CONFIG_FILE}"; then
-  echo "New-style block already present. Updating it in-place…"
-  # Replace everything between our start/end markers with NEW_BLOCK
+main() {
+  require_root
+  install_deps
+  ensure_tools
+  read_new_block
 
-  sed -i '/^# --- Streamlit reverse proxy for team1f25 ---/,/^# --- End Streamlit reverse proxy for team1f25 ---/d' "${CONFIG_FILE}"
+  echo "🔎 Searching for files with '<VirtualHost *:443>' under: $SITES_DIR"
+  mapfile -t candidates < <(grep -rlE -- '<VirtualHost[[:space:]]+\*:443>' "$SITES_DIR" || true)
 
-  echo "" >> "${CONFIG_FILE}"
-  echo "${NEW_BLOCK}" >> "${CONFIG_FILE}"
-  REPLACEMENT_SUCCESSFUL=1
-elif grep -qF "${LEGACY_TITLE_LINE}" "${CONFIG_FILE}"; then
-  echo "Legacy block detected. Removing it before inserting the new block…"
+  if [[ ${#candidates[@]} -eq 0 ]]; then
+    echo "No files with a '<VirtualHost *:443>' block were found in $SITES_DIR."
+    exit 0
+  fi
 
-  # Remove the old block first, including the start and end marker lines.
-  # This will delete everything from the first "########################################" to the last one.
-  sed -i '/^########################################/,/^########################################/d' "${CONFIG_FILE}"
+  local changed=false
+  for f in "${candidates[@]}"; do
+    if perl -0777 -ne 'print 1 if /<VirtualHost\s+\*:443\b>.*?<\/VirtualHost>/s' -- "$f" >/dev/null 2>&1; then
+      echo "🧩 Updating: $f"
+      backup_file "$f"
+      replace_vhost_block_in_file "$f"
+      changed=true
+    fi
+  done
 
-  # Now append the new block
-  echo "" >> "${CONFIG_FILE}"
-  echo "${NEW_BLOCK}" >> "${CONFIG_FILE}"
-  REPLACEMENT_SUCCESSFUL=1
-else
-  echo "Inserting new block…"
-  echo "" >> "${CONFIG_FILE}"
-  echo "${NEW_BLOCK}" >> "${CONFIG_FILE}"
-  REPLACEMENT_SUCCESSFUL=1
-fi
+  if [[ "$changed" == "false" ]]; then
+    echo "No <VirtualHost *:443> blocks found to replace. Nothing changed."
+    exit 0
+  fi
 
-# Remove the backup if the replacement was successful.
-if [ "$REPLACEMENT_SUCCESSFUL" -eq 1 ]; then
-  echo "--- Configuration updated successfully. Removing backup file ---"
-  rm "${BACKUP_FILE}"
-else
-  echo "--- Configuration not updated. Backup file retained for safety ---"
-fi
+  enable_modules
+  validate_and_reload
+}
 
-echo "--- Gracefully reloading Apache ---"
-apachectl -k graceful
-
-echo "--- Script complete ---"
+main "$@"

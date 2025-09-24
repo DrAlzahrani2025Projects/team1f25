@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run from this script's directory
-cd "$(dirname "$0")"
+# Usage: docker-cleanup.sh <image> <container>
+IMAGE="${1:-}"
+CONTAINER="${2:-}"
 
-echo "🧹 Cleaning up team1f25-app ..."
+echo "🧹 Cleaning old container(s) and image..."
 
-# Remove the named container if it exists
-docker rm -f team1f25-app-container >/dev/null 2>&1 || true
-
-# Remove any containers created from the image
-ids="$(docker ps -aq --filter ancestor=team1f25-app || true)"
-if [ -n "${ids}" ]; then
-  docker rm -f ${ids}
+# Stop & remove the named container (if provided/existing)
+if [[ -n "${CONTAINER}" ]]; then
+  docker rm -f "${CONTAINER}" >/dev/null 2>&1 || true
 fi
 
-# Remove the image if it exists
-docker rmi -f team1f25-app >/dev/null 2>&1 || true
+# Remove any containers created from the image (if provided)
+if [[ -n "${IMAGE}" ]]; then
+  ids="$(docker ps -aq --filter "ancestor=${IMAGE}" || true)"
+  if [[ -n "${ids}" ]]; then
+    # shellcheck disable=SC2086
+    docker rm -f ${ids} >/dev/null 2>&1 || true
+  fi
 
-echo "✅ Done."
+  # Remove the image itself
+  docker rmi -f "${IMAGE}" >/dev/null 2>&1 || true
+fi
+
+echo "✅ Cleanup complete."
