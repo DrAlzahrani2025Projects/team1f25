@@ -15,4 +15,5 @@ exec jupyter notebook \
   --port=8888 \
   --no-browser \
   --NotebookApp.token='' \
-  --NotebookApp.base_url=/team1f25-jupyter
+  --NotebookApp.base_url=/team1f25-jupyter \
+  --allow-root
