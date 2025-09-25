@@ -55,12 +55,10 @@ chmod +x docker-setup.sh
 ./docker-setup.sh
 ```
 
-### Step 7: Access AI Agent
+### Step 7: Access Services
 
-For Streamlit:
-
-- Once the container starts, Open browser at http://localhost:5001/team1f25
-  
+- Streamlit (local):  http://localhost:5001/team1f25/
+- Jupyter (local):    http://localhost:8888/team1f25-jupyter/
 
 ### Step 8: Run the script to stop and remove the Docker image and container :
 
@@ -72,9 +70,8 @@ For Streamlit:
 
 ### Hosted on CSE department web server
 
-For Streamlit:
-
-Open browser at https://sec.cse.csusb.edu/team1f25/
+- Streamlit (remote): https://sec.cse.csusb.edu/team1f25/
+- Jupyter (remote):   https://sec.cse.csusb.edu/team1f25-jupyter/
 
 ## Google Colab Notebook  
 

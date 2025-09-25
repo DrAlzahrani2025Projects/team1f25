@@ -27,10 +27,11 @@ docker rmi -f "$DOCKER_APP_IMAGE" >/dev/null 2>&1 || true
 echo "🔨 Building image $DOCKER_APP_IMAGE..."
 docker build -t "$DOCKER_APP_IMAGE" .
 
-echo "🚀 Running container $DOCKER_CONTAINER_NAME on :$DOCKER_APP_PORT..."
+echo "🚀 Running container $DOCKER_CONTAINER_NAME on :$DOCKER_APP_PORT and 8888..."
 docker run -d --restart unless-stopped \
   --name "$DOCKER_CONTAINER_NAME" \
   -p "$DOCKER_APP_PORT":"$DOCKER_APP_PORT" \
+  -p 8888:8888 \
   "$DOCKER_APP_IMAGE":latest
 
 echo "✅ Docker setup complete."
