@@ -55,10 +55,9 @@ chmod +x docker-setup.sh
 ./docker-setup.sh
 ```
 
-### Step 7: Access Services
+### Step 7: Access the App
 
 - Streamlit (local):  http://localhost:5001/team1f25/
-- Jupyter (local):    http://localhost:8888/team1f25-jupyter/
 
 ### Step 8: Run the script to stop and remove the Docker image and container :
 
@@ -71,11 +70,6 @@ chmod +x docker-setup.sh
 ### Hosted on CSE department web server
 
 - Streamlit (remote): https://sec.cse.csusb.edu/team1f25/
-- Jupyter (remote):   https://sec.cse.csusb.edu/team1f25-jupyter/
 
-## Google Colab Notebook  
-
-We have integrated a Google Colab notebook for easy access and execution.
-
-[Open in Colab](https://colab.research.google.com/drive/1tf7gLr7rv-YE5rZq6R0iJzA3-MUVs38N?usp=sharing)
+<!-- Jupyter/Colab references removed: app now focuses solely on Streamlit -->
 

@@ -2,13 +2,12 @@
 
 This is a lightweight test harness to validate your path-based proxying to the Windows-hosted app without touching the production server.
 
-It runs Apache httpd in a Docker container and proxies:
+It runs Apache httpd in a Docker container and proxies only your Streamlit app:
 - `/team1f25/` → `http://host.docker.internal:5001/team1f25/` (Streamlit)
-- `/team1f25-jupyter/` → `http://host.docker.internal:8888/team1f25-jupyter/` (Jupyter)
 
 Prereqs:
 - Docker Desktop running
-- Your app container running locally and listening on ports 5001 and 8888
+- Your app container running locally and listening on port 5001
 
 ## PowerShell usage
 
@@ -24,7 +23,6 @@ docker logs --tail 80 $cid
 
 # test
 Invoke-WebRequest http://localhost:8080/team1f25/ -UseBasicParsing | Select-Object StatusCode
-Invoke-WebRequest http://localhost:8080/team1f25-jupyter/ -UseBasicParsing | Select-Object StatusCode
 
 # stop/remove when done
 ./apache-local/stop-proxy.ps1
@@ -47,7 +45,6 @@ docker logs --tail 80 "$cid"
 
 # test
 curl -I http://localhost:8080/team1f25/
-curl -I http://localhost:8080/team1f25-jupyter/
 
 # stop/remove when done
 ./apache-local/stop-proxy.sh
@@ -55,5 +52,5 @@ curl -I http://localhost:8080/team1f25-jupyter/
 
 ## Notes
 - If you see 404s, ensure the volumes mounted correctly inside the container.
-- WebSockets are enabled via `mod_proxy_wstunnel` and rewrite rules.
+- WebSockets are enabled via `mod_proxy_wstunnel` and rewrite rules (for Streamlit reruns and state updates).
 - For HTTPS testing locally, you could front this with an mkcert-generated cert or use a different local setup; HTTP is sufficient for functional checks.
