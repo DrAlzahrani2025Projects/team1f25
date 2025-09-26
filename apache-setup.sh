@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- Paths & Inputs ---
+# -- Paths & Inputs --
 SITES_DIR="/etc/apache2/sites-available"
 NEW_BLOCK_443="./apache-proxy-https.conf"
 NEW_BLOCK_80="./apache-proxy-http.conf"
 
 declare -a BACKUPS=()
 
-# --- Helpers ---
+# -- Helpers --
 require_root() {
   if [[ ${EUID} -ne 0 ]]; then
     echo "Please run as root (sudo)." >&2
