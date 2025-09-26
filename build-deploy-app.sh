@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- Docker Configuration ---
+# ---Docker Configuration---
 DOCKER_APP_IMAGE="team1f25-app"
 DOCKER_CONTAINER_NAME="team1f25-app-container"
 DOCKER_APP_PORT="5001"
@@ -14,7 +14,7 @@ if [[ ! -d "${DOCKER_WORKDIR}" ]]; then
   exit 1
 fi
 
-# Run cleanup before building
+# -- Run cleanup before building --
 if [[ -x "${CLEANUP_SCRIPT}" ]]; then
   "./${CLEANUP_SCRIPT}" "${DOCKER_APP_IMAGE}" "${DOCKER_CONTAINER_NAME}"
 else
