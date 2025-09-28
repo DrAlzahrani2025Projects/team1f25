@@ -1,21 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run from this script's directory
-cd "$(dirname "$0")"
+CONTAINER_NAME=team1f25
+IMAGE_NAME=team1f25:latest
 
-echo "🧹 Cleaning up team1f25-app ..."
+docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
+docker rmi -f "$IMAGE_NAME" 2>/dev/null || true
 
-# Remove the named container if it exists
-docker rm -f team1f25-app-container >/dev/null 2>&1 || true
-
-# Remove any containers created from the image
-ids="$(docker ps -aq --filter ancestor=team1f25-app || true)"
-if [ -n "${ids}" ]; then
-  docker rm -f ${ids}
-fi
-
-# Remove the image if it exists
-docker rmi -f team1f25-app >/dev/null 2>&1 || true
-
-echo "✅ Done."
+echo "Cleaned up container and image."

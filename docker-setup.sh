@@ -1,29 +1,15 @@
 #!/usr/bin/env bash
-# Build and run the team1f25 Streamlit Docker app
-# Exit on error (-e), unset var (-u), fail in pipelines (-o pipefail)
 set -euo pipefail
 
-# Run from this script's directory
-cd "$(dirname "$0")"
+IMAGE_NAME=team1f25:latest
+CONTAINER_NAME=team1f25
 
-echo "🧹 Cleaning old container(s) and image ..."
+docker build -t "$IMAGE_NAME" .
 
-# Remove the named container if it exists
-docker rm -f team1f25-app-container >/dev/null 2>&1 || true
-
-# Remove any containers created from the image (if any)
-ids="$(docker ps -aq --filter ancestor=team1f25-app || true)"
-if [ -n "${ids}" ]; then
-  docker rm -f ${ids}
+if [ "$(docker ps -aq -f name="^${CONTAINER_NAME}$")" ]; then
+  docker rm -f "$CONTAINER_NAME" || true
 fi
 
-# Remove the image if it exists
-docker rmi -f team1f25-app >/dev/null 2>&1 || true
+docker run -d --name "$CONTAINER_NAME" -p 5001:5001 "$IMAGE_NAME"
 
-echo "🔨 Building image team1f25-app ..."
-docker build -t team1f25-app team1f25-app
-
-echo "🚀 Running container team1f25-app-container on :5001 ..."
-docker run -d --name team1f25-app-container -p 5001:5001 team1f25-app:latest
-
-echo "✅ Done."
+echo "Container started. Visit: http://localhost:5001/team1f25"
