@@ -8,5 +8,5 @@ RUN pip install --no-cache-dir streamlit
 
 # Copied the application file (app.py) from local machine into container’s /app folder
 COPY app.py .
-EXPOSE 5001
+
 CMD ["streamlit", "run", "app.py", "--server.port=5001", "--server.address=0.0.0.0", "--server.baseUrlPath=team1f25", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
