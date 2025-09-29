@@ -49,7 +49,7 @@ Run the setup script to build and start the Docker container:
 chmod +x docker-setup.sh
 ```
 
-### Step 6: Run Build Script:
+### Step 6: Run the Build Script:
 
 ```
 ./docker-setup.sh
