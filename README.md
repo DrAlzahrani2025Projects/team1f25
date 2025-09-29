@@ -62,7 +62,7 @@ For Streamlit:
 - Once the container starts, Open browser at http://localhost:5001/team1f25
   
 
-### Step 8: Run the script to stop and remove the Docker image and container :
+### Step 8: Run the script to stop and remove the Docker image && container :
 
 ```
 ./docker-cleanup.sh
