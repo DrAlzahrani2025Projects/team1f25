@@ -20,7 +20,7 @@ if [[ -n "${IMAGE}" ]]; then
     docker rm -f ${ids} >/dev/null 2>&1 || true
   fi
 
-  # Remove the image itself
+  # Remove the image 
   docker rmi -f "${IMAGE}" >/dev/null 2>&1 || true
 fi
 
