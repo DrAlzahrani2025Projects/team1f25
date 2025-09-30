@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Usage: docker-cleanup.sh <image> <container>
-IMAGE="${1:-}"
-CONTAINER="${2:-}"
+IMAGE="${1:-team1f25-app}"
+CONTAINER="${2:-team1f25-app-container}"
 
 echo "🧹 Cleaning old container(s) and image..."
 
