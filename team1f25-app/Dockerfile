@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 # Set the working directory inside the container to app
-WORKDIR /app 
+WORKDIR /app
 
 # Install Streamlit (lightweight installation, no cached files to save space)
 RUN pip install --no-cache-dir streamlit
