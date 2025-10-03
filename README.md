@@ -60,6 +60,16 @@ If you're using git bash run the below command
 ```
 docker run -d -p 5001:5001 --name team1f25 team1f25-streamlit:latest
 ```
+### Optional Step : Error: port is already allocated
+
+If you're encountering error: port is already allocated 
+
+```
+docker stop $(docker ps -q --filter "publish=5001")
+docker ps -a -q | xargs -r docker rm
+```
+
+then run step 5 and 6 again
 
 ### Step 7: Access AI Agent
 
