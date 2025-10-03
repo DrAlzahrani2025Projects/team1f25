@@ -65,8 +65,9 @@ docker run -d -p 5001:5001 --name team1f25 team1f25-streamlit:latest
 If you're encountering error: port is already allocated 
 
 ```
-docker stop $(docker ps -q --filter "publish=5001")
-docker ps -a -q | xargs -r docker rm
+docker ps -q --filter "publish=5001/tcp" | xargs -r docker stop
+docker ps -q --filter "name=team1f25" | xargs -r docker stop
+docker ps -a -q --filter "name=team1f25" | xargs -r docker rm
 ```
 
 then run step 5 and 6 again
