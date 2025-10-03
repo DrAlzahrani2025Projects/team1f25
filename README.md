@@ -41,18 +41,24 @@ Update the repository to the latest version:
 git pull origin main
 ```
 
-### Step 5: Enable execute permissions for the Docker build and cleanup script:
+### Step 5: Build the docker image:
 
-Run the setup script to build and start the Docker container:
-
-```
-chmod +x docker-setup.sh
-```
-
-### Step 6: Run the Build Script:
+Run the command to build Docker container:
 
 ```
-./docker-setup.sh
+docker build -t team1f25-streamlit:latest .
+```
+
+### Step 6: Run the container:
+
+```
+docker run -d -p 5001:5001 --name team1f25 team1f25-streamlit:latest streamlit run app.py --server.port=5001 --server.address=0.0.0.0 --server.enableCORS=false --server.baseUrlPath=/team1f25
+```
+
+If you're using git bash run the below command
+
+```
+docker run -d -p 5001:5001 --name team1f25 team1f25-streamlit:latest
 ```
 
 ### Step 7: Access AI Agent
@@ -61,12 +67,6 @@ For Streamlit:
 
 - Once the container starts, Open browser at http://localhost:5001/team1f25
   
-
-### Step 8: Run the script to stop and remove the Docker image && container :
-
-```
-./docker-cleanup.sh
-```
 
 ---
 
