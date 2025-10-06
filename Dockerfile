@@ -10,6 +10,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py ./
+
 # Default environment (override at runtime)
 ENV OLLAMA_URL=http://host.docker.internal:11434
 ENV LLM_MODEL=tinyllama:latest
