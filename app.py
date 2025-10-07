@@ -35,16 +35,27 @@ def save_message(session_id, role, content):
         )
         conn.commit()
 
-# ---------- page config ----------
+# ---------- page config & styles ----------
 st.set_page_config(page_title="Chat", page_icon="💬", layout="wide")
-
-# minimal styling to center and spacious chat area
 st.markdown("""
 <style>
+/* page width & spacing */
 .block-container { max-width: 900px; padding-top: 3vh; }
-.chat-wrap { border: 1px solid #eee; border-radius: 14px; padding: 12px; min-height: 60vh; }
-h1 { margin-bottom: 6px; }
-.topbar { display:flex; justify-content:space-between; align-items:center; }
+
+/* Header row */
+.header-row { display:flex; align-items:center; gap:16px; }
+.header-title { font-size: 42px; font-weight: 800; margin: 0; }
+.header-spacer { flex:1; }
+.new-btn .stButton>button {
+  border-radius: 10px; padding: 10px 14px; font-weight: 600;
+}
+
+/* Chat message spacing */
+.chat-area { margin-top: 8px; }
+.stChatMessage { padding-top: 6px; padding-bottom: 6px; }
+
+/* Make input look elevated */
+.stChatInputContainer { padding-top: 6px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -55,35 +66,48 @@ if "messages" not in st.session_state:
     st.session_state.messages = load_history(st.session_state.session_id)
 
 # ---------- header ----------
-col_a, col_b = st.columns([1, 1])
-with col_a:
-    st.markdown("<div class='topbar'><h1>What can I help with?</h1></div>", unsafe_allow_html=True)
-with col_b:
-    if st.button("🆕 New chat", use_container_width=True):
+header_col = st.container()
+with header_col:
+    st.markdown(
+        """
+        <div class="header-row">
+          <div class="header-title">What can I help with?</div>
+          <div class="header-spacer"></div>
+          <div class="new-btn">
+            <!-- placeholder for button -->
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    # Render the button right after the HTML so it lands in the same row visually
+    new_chat = st.button("🆕 New chat", key="new_chat_btn")
+    if new_chat:
         st.session_state.session_id = secrets.token_urlsafe(12)
         st.session_state.messages = []
         st.rerun()
 
-# ---------- chat history (true chat UI) ----------
-with st.container():
-    st.markdown("<div class='chat-wrap'>", unsafe_allow_html=True)
-    # stream history as chat bubbles
+st.divider()
+
+# ---------- chat history (only render if exists) ----------
+if st.session_state.messages:
     for m in st.session_state.messages:
         with st.chat_message(m["role"]):
             st.markdown(m["content"])
-    st.markdown("</div>", unsafe_allow_html=True)
+else:
+    # nice subtle hint instead of a big empty box
+    st.info("Start a conversation below — your messages and replies will appear here.")
 
-# ---------- chat input at the bottom ----------
+# ---------- input ----------
 prompt = st.chat_input("Ask anything")
-
 if prompt:
-    # show user bubble immediately
+    # show user bubble immediately & persist
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
     save_message(st.session_state.session_id, "user", prompt)
 
-    # call Groq with full context
+    # call Groq
     api_key = os.getenv("GROQ_API_KEY", "")
     if not api_key:
         with st.chat_message("assistant"):
@@ -91,20 +115,18 @@ if prompt:
     else:
         try:
             client = Groq(api_key=api_key)
-            model = "llama-3.3-70b-versatile"
+            model = "llama-3.3-70b-versatile"  # current recommended
             resp = client.chat.completions.create(
                 model=model,
-                messages=[{"role": "system", "content": "You are a helpful, concise assistant."}] +
-                         st.session_state.messages,
+                messages=[{"role": "system", "content": "You are a helpful, concise assistant."}]
+                         + st.session_state.messages,
                 temperature=0.3,
             )
             answer = resp.choices[0].message.content
         except Exception as e:
             answer = f"⚠️ API error: {e}"
 
-        # show assistant bubble + persist
         with st.chat_message("assistant"):
             st.markdown(answer)
         st.session_state.messages.append({"role": "assistant", "content": answer})
         save_message(st.session_state.session_id, "assistant", answer)
-
