@@ -9,6 +9,10 @@ Before you begin, ensure you have the following:
 
 ---
 
+## Running the Application
+
+Follow these steps to get the application running on your local machine.
+
 ### Step 1: Remove the existing code directory completely
 
 Because the local repository can't been updated correctly, need to remove the directory first.
@@ -21,7 +25,7 @@ rm -rf team1f25
 
 Clone the GitHub repository to your local machine:
 
-```
+```bash
 git clone https://github.com/DrAlzahrani2025Projects/team1f25.git
 ```
 
@@ -29,7 +33,7 @@ git clone https://github.com/DrAlzahrani2025Projects/team1f25.git
 
 Change to the cloned repository directory:
 
-```
+```bash
 cd team1f25
 ```
 
@@ -37,47 +41,45 @@ cd team1f25
 
 Update the repository to the latest version:
 
-```
+```bash
 git pull origin main
 ```
 
-### Step 5: Build the docker image:
+### Step 5: Make Scripts Executable
 
-Run the command to build Docker container:
+Make the setup and cleanup scripts executable. This step only needs to be done once.
 
-```
-docker build -t team1f25-streamlit:latest .
-```
+*Note: If you are on Windows, you must run this command in a `bash` terminal, such as the one provided by Git Bash or WSL.*
 
-### Step 6: Run the container:
-
-```
-docker run -d -p 5001:5001 --name team1f25 team1f25-streamlit:latest streamlit run app.py --server.port=5001 --server.address=0.0.0.0 --server.enableCORS=false --server.baseUrlPath=/team1f25
+```bash
+chmod +x startup.sh cleanup.sh
 ```
 
-If you're using git bash run the below command
+### Step 6: Run the Startup Script
 
-```
-docker run -d -p 5001:5001 --name team1f25 team1f25-streamlit:latest
-```
-### Optional Step : Error: port is already allocated
+Execute the startup script to begin the setup process.
 
-If you're encountering error: port is already allocated 
-
-```
-docker ps -q --filter "publish=5001/tcp" | xargs -r docker stop
-docker ps -q --filter "name=team1f25" | xargs -r docker stop
-docker ps -a -q --filter "name=team1f25" | xargs -r docker rm
+```bash
+./startup.sh
 ```
 
-then run step 5 and 6 again
+### Step 7: Enter Your API Key
 
-### Step 7: Access AI Agent
+When prompted by the script, paste your Groq API key and press Enter.
 
-For Streamlit:
+### Step 8: Access the AI Agent
 
-- Once the container starts, Open browser at http://localhost:5001/team1f25
-  
+Once the container starts, open your browser and navigate to:
+
+[http://localhost:5001](http://localhost:5001)
+
+### Step 9: Clean Up
+
+When you are finished, run the cleanup script to stop and remove the Docker container and image.
+
+```bash
+./cleanup.sh
+```
 
 ---
 
