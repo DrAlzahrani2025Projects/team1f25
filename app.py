@@ -35,18 +35,16 @@ def save_message(session_id, role, content):
         )
         conn.commit()
 
-# ---------- page + styling ----------
-st.set_page_config(page_title="Ask anything", page_icon="🔎", layout="wide")
+# ---------- page config ----------
+st.set_page_config(page_title="Chat", page_icon="💬", layout="wide")
+
+# minimal styling to center and spacious chat area
 st.markdown("""
 <style>
-.block-container { max-width: 820px; padding-top: 6vh; }
-.chat-bubble { padding: 12px 16px; border-radius: 14px; margin: 6px 0; }
-.user   { background: #eef3ff; }
-.assistant { background: #f6f6f6; }
-.msg-wrap { display: flex; }
-.msg-wrap.user { justify-content: flex-end; }
-.msg-wrap.assistant { justify-content: flex-start; }
-h1 { font-size: 44px; }
+.block-container { max-width: 900px; padding-top: 3vh; }
+.chat-wrap { border: 1px solid #eee; border-radius: 14px; padding: 12px; min-height: 60vh; }
+h1 { margin-bottom: 6px; }
+.topbar { display:flex; justify-content:space-between; align-items:center; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -54,66 +52,59 @@ h1 { font-size: 44px; }
 if "session_id" not in st.session_state:
     st.session_state.session_id = secrets.token_urlsafe(12)
 if "messages" not in st.session_state:
-    # load persisted history into memory
     st.session_state.messages = load_history(st.session_state.session_id)
 
-# ---------- header actions ----------
-col1, col2 = st.columns([1, 1])
-with col1:
-    st.title("What can I help with?")
-with col2:
-    if st.button("🆕 New chat", help="Start a fresh conversation"):
-        # new session id, empty messages (keeps old chats in DB)
+# ---------- header ----------
+col_a, col_b = st.columns([1, 1])
+with col_a:
+    st.markdown("<div class='topbar'><h1>What can I help with?</h1></div>", unsafe_allow_html=True)
+with col_b:
+    if st.button("🆕 New chat", use_container_width=True):
         st.session_state.session_id = secrets.token_urlsafe(12)
         st.session_state.messages = []
         st.rerun()
 
-# ---------- show history ----------
-for m in st.session_state.messages:
-    css = "user" if m["role"] == "user" else "assistant"
-    with st.container():
-        st.markdown(f"<div class='msg-wrap {css}'><div class='chat-bubble {css}'>{m['content']}</div></div>", unsafe_allow_html=True)
+# ---------- chat history (true chat UI) ----------
+with st.container():
+    st.markdown("<div class='chat-wrap'>", unsafe_allow_html=True)
+    # stream history as chat bubbles
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# ---------- input form ----------
-with st.form("ask_form", clear_on_submit=True):
-    q = st.text_input("Ask anything", label_visibility="collapsed", placeholder="Ask anything")
-    submitted = st.form_submit_button("Ask")
+# ---------- chat input at the bottom ----------
+prompt = st.chat_input("Ask anything")
 
-# ---------- on submit: call Groq with history ----------
-if submitted and q.strip():
-    api_key = os.getenv("GROQ_API_KEY")
+if prompt:
+    # show user bubble immediately
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    save_message(st.session_state.session_id, "user", prompt)
+
+    # call Groq with full context
+    api_key = os.getenv("GROQ_API_KEY", "")
     if not api_key:
-        st.error("Missing GROQ_API_KEY. Set it in your Docker run command.")
-        st.stop()
+        with st.chat_message("assistant"):
+            st.error("Missing GROQ_API_KEY (set it in Docker env or .env).")
+    else:
+        try:
+            client = Groq(api_key=api_key)
+            model = "llama-3.3-70b-versatile"
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": "You are a helpful, concise assistant."}] +
+                         st.session_state.messages,
+                temperature=0.3,
+            )
+            answer = resp.choices[0].message.content
+        except Exception as e:
+            answer = f"⚠️ API error: {e}"
 
-    # update memory + persist user msg
-    user_msg = {"role": "user", "content": q.strip()}
-    st.session_state.messages.append(user_msg)
-    save_message(st.session_state.session_id, "user", user_msg["content"])
-
-    # build full conversation for the API
-    messages_for_llm = [{"role": "system", "content": "You are a helpful, concise assistant."}]
-    messages_for_llm.extend(st.session_state.messages)
-
-    try:
-        client = Groq(api_key=api_key)
-        # Use a current Groq model (3.3-70B is the replacement for the deprecated 3.1-70B)
-        model = "llama-3.3-70b-versatile"
-        resp = client.chat.completions.create(
-            model=model,
-            messages=messages_for_llm,
-            temperature=0.3,
-        )
-        answer = resp.choices[0].message.content
-    except Exception as e:
-        answer = f"⚠️ API error: {e}"
-
-    asst_msg = {"role": "assistant", "content": answer}
-    st.session_state.messages.append(asst_msg)
-    save_message(st.session_state.session_id, "assistant", answer)
-
-    # render last turn immediately
-    st.markdown(f"<div class='msg-wrap assistant'><div class='chat-bubble assistant'>{answer}</div></div>", unsafe_allow_html=True)
-
-
+        # show assistant bubble + persist
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        save_message(st.session_state.session_id, "assistant", answer)
 
