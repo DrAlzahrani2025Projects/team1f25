@@ -1,2 +1,4 @@
-# Environment variables
+data/
+*.db
 .env
+*.env

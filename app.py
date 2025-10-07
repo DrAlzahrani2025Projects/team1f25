@@ -1,45 +1,110 @@
+import os, sqlite3, secrets, datetime as dt
 import streamlit as st
-import google.generativeai as genai
-import os
-from dotenv import load_dotenv
+from groq import Groq
 
-load_dotenv()
+DB_PATH = "data/chat.db"
 
-st.set_page_config(page_title="Chatbot")
+# ---------- persistence helpers ----------
+def ensure_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS chats(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            ts TEXT NOT NULL
+        )""")
+        conn.commit()
 
-st.title("Chatbot")
+def load_history(session_id):
+    ensure_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute(
+            "SELECT role, content FROM chats WHERE session=? ORDER BY id ASC",
+            (session_id,)
+        ).fetchall()
+    return [{"role": r, "content": c} for (r, c) in rows]
 
-# Get API key from .env file or user input
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    api_key = st.text_input("Enter your Gemini API Key:", type="password")
+def save_message(session_id, role, content):
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "INSERT INTO chats(session, role, content, ts) VALUES(?,?,?,?)",
+            (session_id, role, content, dt.datetime.utcnow().isoformat())
+        )
+        conn.commit()
 
-if api_key:
-    genai.configure(api_key=api_key)
+# ---------- page config ----------
+st.set_page_config(page_title="Chat", page_icon="💬", layout="wide")
 
-    model = genai.GenerativeModel('gemini-2.0-flash-lite')
+# minimal styling to center and spacious chat area
+st.markdown("""
+<style>
+.block-container { max-width: 900px; padding-top: 3vh; }
+.chat-wrap { border: 1px solid #eee; border-radius: 14px; padding: 12px; min-height: 60vh; }
+h1 { margin-bottom: 6px; }
+.topbar { display:flex; justify-content:space-between; align-items:center; }
+</style>
+""", unsafe_allow_html=True)
 
-    if "chat" not in st.session_state:
-        st.session_state.chat = model.start_chat(history=[])
+# ---------- session bootstrap ----------
+if "session_id" not in st.session_state:
+    st.session_state.session_id = secrets.token_urlsafe(12)
+if "messages" not in st.session_state:
+    st.session_state.messages = load_history(st.session_state.session_id)
 
-    # Display chat messages from history on app rerun
-    for message in st.session_state.chat.history:
-        with st.chat_message("assistant" if message.role == "model" else message.role):
-            st.markdown(message.parts[0].text)
+# ---------- header ----------
+col_a, col_b = st.columns([1, 1])
+with col_a:
+    st.markdown("<div class='topbar'><h1>What can I help with?</h1></div>", unsafe_allow_html=True)
+with col_b:
+    if st.button("🆕 New chat", use_container_width=True):
+        st.session_state.session_id = secrets.token_urlsafe(12)
+        st.session_state.messages = []
+        st.rerun()
 
-    # React to user input
-    if prompt := st.chat_input("What is up?"):
-        # Display user message in chat message container
-        st.chat_message("user").markdown(prompt)
-        
+# ---------- chat history (true chat UI) ----------
+with st.container():
+    st.markdown("<div class='chat-wrap'>", unsafe_allow_html=True)
+    # stream history as chat bubbles
+    for m in st.session_state.messages:
+        with st.chat_message(m["role"]):
+            st.markdown(m["content"])
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ---------- chat input at the bottom ----------
+prompt = st.chat_input("Ask anything")
+
+if prompt:
+    # show user bubble immediately
+    with st.chat_message("user"):
+        st.markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    save_message(st.session_state.session_id, "user", prompt)
+
+    # call Groq with full context
+    api_key = os.getenv("GROQ_API_KEY", "")
+    if not api_key:
+        with st.chat_message("assistant"):
+            st.error("Missing GROQ_API_KEY (set it in Docker env or .env).")
+    else:
         try:
-            # Send user message to Gemini and get response
-            response = st.session_state.chat.send_message(prompt)
-            
-            # Display assistant response in chat message container
-            with st.chat_message("assistant"):
-                st.markdown(response.text)
+            client = Groq(api_key=api_key)
+            model = "llama-3.3-70b-versatile"
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": "You are a helpful, concise assistant."}] +
+                         st.session_state.messages,
+                temperature=0.3,
+            )
+            answer = resp.choices[0].message.content
         except Exception as e:
-            st.chat_message("assistant").error(f"An error occurred: {e}")
-else:
-    st.warning("Please enter your Gemini API Key to continue.")
+            answer = f"⚠️ API error: {e}"
+
+        # show assistant bubble + persist
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        st.session_state.messages.append({"role": "assistant", "content": answer})
+        save_message(st.session_state.session_id, "assistant", answer)
+
