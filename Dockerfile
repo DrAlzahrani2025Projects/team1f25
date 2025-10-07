@@ -14,4 +14,4 @@ COPY app.py .
 RUN mkdir -p /app/data
 EXPOSE 5001
 
-CMD ["streamlit","run","app.py","--server.port=5001","--server.address=0.0.0.0","--server.enableCORS=false"]
+CMD ["streamlit","run","app.py","--server.port=5001","--server.address=0.0.0.0","--server.enableCORS=false","--server.baseUrlPath=/team1f25"]
