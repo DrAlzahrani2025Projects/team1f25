@@ -1,10 +1,20 @@
 FROM python:3.11-slim
-
 WORKDIR /app
-COPY app.py /app/app.py
 
-RUN pip install --no-cache-dir streamlit==1.37.1
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py .
 
 EXPOSE 5001
 
-CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=5001", "--server.baseUrlPath=team1f25"]
+# default served at root; override via --env-file .env
+ENV BASE_URL_PATH=""
+
+# shell-form CMD so $BASE_URL_PATH is substituted at runtime
+CMD streamlit run app.py \
+    --server.headless=true \
+    --server.port=5001 \
+    --server.address=0.0.0.0 \
+    --server.enableCORS=false \
+    --server.baseUrlPath="$BASE_URL_PATH"
