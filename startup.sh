@@ -5,8 +5,8 @@
 
 # Ask for the API key
 echo "Please enter your Groq API key:"
-read GROQ_API_KEY
-
+read -s GROQ_API_KEY
+echo
 # Build the Docker image
 echo "Building Docker image..."
 docker build -t team1f25-streamlit .
