@@ -3,3 +3,6 @@ groq
 requests
 pydantic
 tqdm
+chromadb
+fastembed
+numpy

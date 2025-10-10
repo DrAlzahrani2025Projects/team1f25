@@ -9,7 +9,7 @@ read -s GROQ_API_KEY
 echo
 # Build the Docker image
 echo "Building Docker image..."
-docker build -t team1f25-streamlit .
+DOCKER_BUILDKIT=1 docker build -t team1f25-streamlit .
 
 # Run the Docker container
 echo "Starting Docker container..."

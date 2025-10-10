@@ -73,6 +73,7 @@ def explore_search(  # kept name so your imports/UI don't change
         "qInclude": "",
         "refEntryActive": "false",
         "searchInFulltextUserSelection": "false",
+        "showPnx": "true",
     }
 
     url = f"{PRIMO_PUBLIC_BASE.rstrip('/')}/pnxs"
@@ -95,3 +96,39 @@ def explore_get_record(record_id: str, context: str = "PC", vid: Optional[str] =
     r = SESSION.get(url, params=params, timeout=PRIMO_TIMEOUT)
     r.raise_for_status()
     return r.json()
+
+def explore_get_record(record_id: str, context: str = "PC", vid: Optional[str] = None,
+                       lang: str = "en", inst: Optional[str] = None,
+                       tab: Optional[str] = None, scope: Optional[str] = None) -> Dict[str, Any]:
+    url = f"{PRIMO_PUBLIC_BASE.rstrip('/')}/pnxs/{context}/{record_id}"
+    params = {
+        "vid": vid or PRIMO_VID,
+        "lang": lang,
+    }
+    if inst or PRIMO_INST: params["inst"]  = inst  or PRIMO_INST
+    if tab  or PRIMO_TAB:  params["tab"]   = tab   or PRIMO_TAB
+    if scope or PRIMO_SCOPE: params["scope"] = scope or PRIMO_SCOPE
+    time.sleep(PRIMO_DELAY)
+    r = SESSION.get(url, params=params, timeout=PRIMO_TIMEOUT)
+    r.raise_for_status()
+    return r.json()
+
+def fetch_full_with_fallback(record_id: str, context_hint: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Try the hinted context, then Local ('L'), then Primo Central ('PC').
+    Returns the JSON with 'pnx' if any succeed; raises last error otherwise.
+    """
+    order = []
+    if context_hint: order.append(context_hint)
+    for c in ("L", "PC"):
+        if c not in order: order.append(c)
+
+    last_err = None
+    for ctx in order:
+        try:
+            return explore_get_record(record_id, context=ctx)
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err if last_err else RuntimeError(f"Could not fetch PNX for {record_id}")
+
