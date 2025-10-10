@@ -3,7 +3,10 @@
 # Run the cleanup script first
 ./cleanup.sh > /dev/null 2>&1
 
-
+# Ask for the API key
+echo "Please enter your Groq API key:"
+read -s GROQ_API_KEY
+echo
 # Build the Docker image
 echo "Building Docker image..."
 docker build -t team1f25-streamlit .
