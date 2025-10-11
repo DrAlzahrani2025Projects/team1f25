@@ -1,7 +1,7 @@
 # main.py
 import streamlit as st
 from app.ui.chat import render_chat
-from app.ui.primo_explore_tab  import render_primo_explore_tab
+from app.ui.primo_explore_tab import render_primo_explore_tab
 
 st.set_page_config(page_title="Scholar AI Assistant", page_icon="📚", layout="wide")
 
