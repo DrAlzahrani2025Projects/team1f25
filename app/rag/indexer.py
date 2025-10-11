@@ -1,7 +1,9 @@
 # app/rag/indexer.py
+from __future__ import annotations
 import json, os, uuid
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Iterable
 import chromadb
+
 from app.rag.embedding import Embedder
 from app.rag.chunk import split_text
 
@@ -11,42 +13,26 @@ CHROMA_DIR = os.path.join(DATA_DIR, "chroma")
 COLLECTION = os.getenv("CHROMA_COLLECTION", "csusb_primo")
 
 # -----------------------
-# Helpers
+# Helpers (sanitizers)
 # -----------------------
-
 def _first_str(v: Any) -> str:
-    """Return a single string from possibly list/None/primitive."""
-    if v is None:
-        return ""
-    if isinstance(v, list):
-        return _first_str(v[0] if v else "")
-    if isinstance(v, (str, int, float, bool)):
-        return str(v)
+    if v is None: return ""
+    if isinstance(v, list): return _first_str(v[0] if v else "")
+    if isinstance(v, (str, int, float, bool)): return str(v)
     return str(v)
 
 def _join_str_list(v: Any) -> str:
-    """Join a list of strings as comma-separated; otherwise return stringified value."""
-    if v is None:
-        return ""
-    if isinstance(v, list):
-        return ", ".join([_first_str(x) for x in v if _first_str(x)])
+    if v is None: return ""
+    if isinstance(v, list): return ", ".join([_first_str(x) for x in v if _first_str(x)])
     return _first_str(v)
 
 def _sanitize_meta(meta: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Chroma metadata must be primitives (str/int/float/bool) — no None, no lists.
-    Convert everything except 'chunk_index' to string; ensure chunk_index is int.
-    """
     safe: Dict[str, Any] = {}
     for k, v in meta.items():
         if k == "chunk_index":
-            # default to 0 if missing/invalid
-            try:
-                safe[k] = int(v)
-            except Exception:
-                safe[k] = 0
+            try: safe[k] = int(v)
+            except Exception: safe[k] = 0
             continue
-        # everything else -> string (no None/lists)
         if k == "creators":
             safe[k] = _join_str_list(v)
         else:
@@ -56,12 +42,7 @@ def _sanitize_meta(meta: Dict[str, Any]) -> Dict[str, Any]:
 # -----------------------
 # Text extraction from PNX
 # -----------------------
-
 def _record_to_text(obj: Dict) -> str:
-    """
-    Build an indexable text blob from PNX fields.
-    We read from obj['pnx'] if present; otherwise fallback to raw/link fields.
-    """
     pnx = obj.get("pnx") or {}
     disp = pnx.get("display") or {}
     add  = pnx.get("addata") or {}
@@ -76,16 +57,12 @@ def _record_to_text(obj: Dict) -> str:
     subj = _join_str_list(search.get("subject"))
 
     parts = [title, creators, year, desc, abst, subj]
-    text = "\n".join([p for p in parts if p]).strip()
-    return text
+    return "\n".join([p for p in parts if p]).strip()
 
 def _brief_meta(obj: Dict) -> Dict[str, Any]:
-    """Pull brief metadata with simple defaults."""
     brief = obj.get("brief") or {}
-    # permalink may be under 'links' or 'link' and might be list
     links = obj.get("links") or obj.get("link") or {}
     permalink = links.get("record") if isinstance(links, dict) else ""
-
     return {
         "record_id": brief.get("record_id") or obj.get("id") or str(uuid.uuid4()),
         "title": brief.get("title") or "",
@@ -98,24 +75,67 @@ def _brief_meta(obj: Dict) -> Dict[str, Any]:
     }
 
 # -----------------------
-# Indexer
+# Chroma helpers
 # -----------------------
-
-def index_jsonl(jsonl_path: str = PRIMO_JSONL, chroma_dir: str = CHROMA_DIR, batch: int = 100):
-    if not os.path.exists(jsonl_path):
-        raise FileNotFoundError(f"Missing {jsonl_path}. Run Sprint-2 ingest/export with PNX first.")
-
-    client = chromadb.PersistentClient(path=chroma_dir)
+def _client_and_coll():
+    client = chromadb.PersistentClient(path=CHROMA_DIR)
     coll = client.get_or_create_collection(COLLECTION)
+    return client, coll
 
+def _batched(iterable: List[Any], n: int) -> Iterable[List[Any]]:
+    for i in range(0, len(iterable), n):
+        yield iterable[i:i+n]
+
+def _get_existing_ids(coll, ids: List[str]) -> set:
+    # Chroma returns subset for ids that exist
+    exist = set()
+    for batch in _batched(ids, 200):
+        res = coll.get(ids=batch)
+        for iid in (res.get("ids") or []):
+            exist.add(iid)
+    return exist
+
+def _safe_upsert(coll, ids: List[str], docs: List[str], metas: List[Dict[str, Any]], embs: List[List[float]]) -> int:
+    # Prefer native upsert if available
+    if hasattr(coll, "upsert"):
+        coll.upsert(ids=ids, documents=docs, metadatas=metas, embeddings=embs)
+        return len(ids)
+    # Fallback: add only missing ids
+    try:
+        coll.add(ids=ids, documents=docs, metadatas=metas, embeddings=embs)
+        return len(ids)
+    except Exception:
+        existing = _get_existing_ids(coll, ids)
+        if existing:
+            new_idx = [i for i, _id in enumerate(ids) if _id not in existing]
+            if new_idx:
+                coll.add(
+                    ids=[ids[i] for i in new_idx],
+                    documents=[docs[i] for i in new_idx],
+                    metadatas=[metas[i] for i in new_idx],
+                    embeddings=[embs[i] for i in new_idx],
+                )
+                return len(new_idx)
+            return 0
+        raise
+
+# -----------------------
+# Indexer (incremental)
+# -----------------------
+def index_jsonl(jsonl_path: str = PRIMO_JSONL, batch: int = 100):
+    if not os.path.exists(jsonl_path):
+        raise FileNotFoundError(f"Missing {jsonl_path}. Run export with PNX first.")
+
+    _, coll = _client_and_coll()
     embedder = Embedder()
 
-    ids: List[str] = []
-    docs: List[str] = []
-    metas: List[Dict[str, Any]] = []
+    to_ids: List[str] = []
+    to_docs: List[str] = []
+    to_meta: List[Dict[str, Any]] = []
 
     added_docs = 0
     skipped_empty = 0
+    skipped_existing = 0
 
     with open(jsonl_path, "r", encoding="utf-8") as f:
         for line in f:
@@ -138,28 +158,52 @@ def index_jsonl(jsonl_path: str = PRIMO_JSONL, chroma_dir: str = CHROMA_DIR, bat
                 continue
 
             for idx, ch in enumerate(chunks):
-                ids.append(f"{rid}::c{idx}")
-                docs.append(ch)
-                meta = {**base_meta, "chunk_index": idx}
-                metas.append(_sanitize_meta(meta))
+                to_ids.append(f"{rid}::c{idx}")
+                to_docs.append(ch)
+                to_meta.append(_sanitize_meta({**base_meta, "chunk_index": idx}))
 
-            # Batch write for speed and lower memory
-            if len(ids) >= batch:
-                embs = embedder.embed(docs)
-                coll.add(ids=ids, documents=docs, metadatas=metas, embeddings=embs)
-                added_docs += len(ids)
-                ids, docs, metas = [], [], []
+            # flush by batch
+            if len(to_ids) >= batch:
+                # incremental: skip already present IDs to avoid re-embedding
+                existing = _get_existing_ids(coll, to_ids)
+                if existing:
+                    new_idx = [i for i, _id in enumerate(to_ids) if _id not in existing]
+                    if not new_idx:
+                        skipped_existing += len(to_ids)
+                        to_ids, to_docs, to_meta = [], [], []
+                        continue
+                    ids = [to_ids[i] for i in new_idx]
+                    docs = [to_docs[i] for i in new_idx]
+                    metas = [to_meta[i] for i in new_idx]
+                    embs = embedder.embed(docs)
+                    added_docs += _safe_upsert(coll, ids, docs, metas, embs)
+                    skipped_existing += (len(to_ids) - len(ids))
+                else:
+                    embs = embedder.embed(to_docs)
+                    added_docs += _safe_upsert(coll, to_ids, to_docs, to_meta, embs)
+                to_ids, to_docs, to_meta = [], [], []
 
     # Flush remainder
-    if ids:
-        embs = embedder.embed(docs)
-        coll.add(ids=ids, documents=docs, metadatas=metas, embeddings=embs)
-        added_docs += len(ids)
+    if to_ids:
+        existing = _get_existing_ids(coll, to_ids)
+        if existing:
+            new_idx = [i for i, _id in enumerate(to_ids) if _id not in existing]
+            if new_idx:
+                ids = [to_ids[i] for i in new_idx]
+                docs = [to_docs[i] for i in new_idx]
+                metas = [to_meta[i] for i in new_idx]
+                embs = embedder.embed(docs)
+                added_docs += _safe_upsert(coll, ids, docs, metas, embs)
+                skipped_existing += (len(to_ids) - len(ids))
+        else:
+            embs = embedder.embed(to_docs)
+            added_docs += _safe_upsert(coll, to_ids, to_docs, to_meta, embs)
 
     return {
         "ok": True,
         "collection": COLLECTION,
-        "path": chroma_dir,
+        "path": CHROMA_DIR,
         "added": added_docs,
         "skipped_empty": skipped_empty,
+        "skipped_existing": skipped_existing,
     }
