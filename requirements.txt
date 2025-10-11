@@ -6,3 +6,4 @@ tqdm
 chromadb
 fastembed
 numpy
+rapidfuzz
