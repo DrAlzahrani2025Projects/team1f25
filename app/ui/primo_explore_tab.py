@@ -1,12 +1,12 @@
 # app/ui/primo_explore_tab.py
 """
-Streamlit tab for CSUSB OneSearch (Public 'pub/pnxs' endpoint).
-
-- Keyless searches via Primo VE public API.
-- Shows brief results; lets you select, select-all, or export-all.
-- Export fetches FULL PNX per record using context fallback (hint -> 'L' -> 'PC').
-
-Writes (deduped) to: /data/primo/records.jsonl
+OneSearch (Public 'pub/pnxs') — simplified UI
+- Language is always English (eng) — no language control shown
+- Resource type is always Articles — no rtype control shown
+- "Per request" control removed from UI
+- Still supports: query, peer-reviewed toggle, sort, year range
+- Export fetches FULL PNX per record using context fallback (hint -> 'L' -> 'PC')
+- Writes (deduped) to: /data/primo/records.jsonl
 """
 
 from __future__ import annotations
@@ -14,72 +14,81 @@ import streamlit as st
 from typing import List
 
 from app.ingest.primo_explore_client import (
-    explore_search,
+    search_with_filters,
     fetch_full_with_fallback,
 )
 from app.ingest.primo_schema import PrimoFull, brief_from_doc
 from app.ingest.primo_store import append_records
 
 
+# --- Session helpers ---
 def _init_state():
     st.session_state.setdefault("explore_docs", [])      # raw search docs
     st.session_state.setdefault("explore_briefs", [])    # PrimoBrief objects
     st.session_state.setdefault("explore_run_id", 0)     # increments each search
     st.session_state.setdefault("explore_last_q", "")    # last query string
 
-
 def _sel_key(i: int) -> str:
-    """Unique checkbox key for this search run."""
     return f"expl_sel_{st.session_state['explore_run_id']}_{i}"
 
-
 def _get_selected_indices(n: int) -> List[int]:
-    """Read current checkbox states into a list of selected indices."""
-    selected = []
-    for i in range(n):
-        if st.session_state.get(_sel_key(i), False):
-            selected.append(i)
-    return selected
+    return [i for i in range(n) if st.session_state.get(_sel_key(i), False)]
 
 
+# --- UI ---
 def render_primo_explore_tab():
     _init_state()
 
     st.subheader("OneSearch — Public Explore API (keyless)")
     st.caption(
         "Search CSUSB OneSearch via the Primo VE public endpoint. "
-        "Export fetches FULL PNX per record (needed for RAG)."
+        "Language is fixed to English; Resource type fixed to Articles. "
+        "Export fetches FULL PNX per record for RAG."
     )
 
-    # -------- Search controls --------
+    # -------- Controls (fixed language/rtype; not shown) --------
     q = st.text_input("Query", value=st.session_state.get("explore_last_q") or "ott subscriber churn")
-    col1, col2 = st.columns(2)
-    with col1:
-        limit = st.slider("Total to fetch", 10, 200, 20, 10)
-    with col2:
-        page_size = st.selectbox("Per request", [10, 20, 50], index=0)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        peer_rev = st.toggle("Peer-reviewed only", value=False,
+                             help="Adds 'tlevel,exact,peer_reviewed' facet")
+    with c2:
+        sort = st.selectbox("Sort", ["rank", "date"], index=0)
+    with c3:
+        # Client-side year range filter
+        y_from, y_to = st.slider("Year range", 1900, 2100, (2000, 2100))
+
+    # Total items to fetch (after filters)
+    limit = st.slider("Total to fetch", 10, 200, 20, 10)
+
+    # Hidden, enforced defaults
+    lang_code = "eng"               # always English
+    rtypes = ["articles"]           # always Articles
+    # per-request page size control is removed from UI (backend handles pagination)
 
     if st.button("Search", type="primary"):
         st.session_state["explore_docs"] = []
         st.session_state["explore_briefs"] = []
-        st.session_state["explore_run_id"] += 1           # invalidate old selection keys
+        st.session_state["explore_run_id"] += 1
         st.session_state["explore_last_q"] = q
 
-        fetched, offset = 0, 0
         prog = st.progress(0, text="Searching…")
         try:
-            while fetched < limit:
-                batch = min(page_size, limit - fetched)
-                resp = explore_search(query=q, limit=batch, offset=offset)
-                docs = resp.get("docs", [])
-                if not docs:
-                    break
-                for d in docs:
-                    st.session_state["explore_docs"].append(d)
-                    st.session_state["explore_briefs"].append(brief_from_doc(d))
-                fetched += len(docs)
-                offset += len(docs)
-                prog.progress(min(100, int((fetched / max(1, limit)) * 100)), text=f"Fetched {fetched}/{limit}")
+            resp = search_with_filters(
+                query=q.strip(),
+                limit=limit,
+                lang_code=lang_code,
+                peer_reviewed=peer_rev,
+                rtypes=rtypes,
+                year_from=y_from,
+                year_to=y_to,
+                sort=sort,
+            )
+            docs = resp.get("docs", []) or []
+            st.session_state["explore_docs"] = docs
+            st.session_state["explore_briefs"] = [brief_from_doc(d) for d in docs]
+            prog.progress(100, text=f"Found {len(docs)} matching docs")
         except Exception as e:
             st.error(f"Explore API error: {e}")
         finally:
@@ -103,7 +112,6 @@ def render_primo_explore_tab():
                 for i in range(len(briefs)):
                     st.session_state[_sel_key(i)] = False
         with c3:
-            # live counter
             sel_count = len(_get_selected_indices(len(briefs)))
             st.metric("Selected", sel_count)
 
@@ -116,10 +124,9 @@ def render_primo_explore_tab():
                 st.write(f"**Type:** {b.resource_type or '—'}")
                 if b.permalink:
                     st.write(f"[Open record]({b.permalink})")
-                # Persisted across reruns because of unique key per run
                 st.checkbox("Select", key=_sel_key(i))
 
-        # Action buttons
+        # Actions
         e1, e2 = st.columns(2)
         with e1:
             if st.button("Export selected → /data/primo/records.jsonl"):
@@ -136,6 +143,7 @@ def _export_selected_with_pnx(briefs, docs):
         return
     _export_indices_with_pnx(selected, briefs, docs)
 
+from app.ingest.primo_schema import PrimoFull  # local import to avoid boot cycles
 
 def _export_indices_with_pnx(indices: List[int], briefs, docs):
     payload: List[PrimoFull] = []

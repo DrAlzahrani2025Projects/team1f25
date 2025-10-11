@@ -1,4 +1,6 @@
 # app/rag/rag_chain.py
+from __future__ import annotations
+import os
 from typing import List, Dict
 from app.core.llm_client import GroqLLM
 from app.rag.retriever import Retriever
@@ -19,13 +21,30 @@ def format_context(hits: List[Dict]) -> str:
         lines.append(f"[{i}] {title} — {link}\n{h.get('text','')}\n")
     return "\n".join(lines)
 
-def answer(question: str, top_k: int = 6, alpha: float = 0.7,
-           use_rerank: bool = True,
-           rerank_topN: int = 12,
-           temperature: float = 0.2, max_tokens: int = 700) -> Dict:
+def answer(
+    question: str,
+    top_k: int = 6,
+    alpha: float = 0.7,
+    use_rerank: bool = True,          # rerank stays on
+    rerank_topN: int = 12,
+    temperature: float | None = None, # <— optional; default from env
+    max_tokens: int = 700
+) -> Dict:
+    # figure out temp without exposing it in UI
+    if temperature is None:
+        try:
+            temperature = float(os.getenv("GROQ_TEMPERATURE", "0.2"))
+        except Exception:
+            temperature = 0.2
+
+    # 1) dense retrieve
     r = Retriever(top_k=max(top_k, rerank_topN))
     dense_hits = r.query(question)
+
+    # 2) hybrid combine
     hybrid_hits = hybrid_rank(dense_hits, question, alpha=alpha)
+
+    # 3) optional LLM rerank (always True by default)
     ranked = rerank_llm(question, hybrid_hits, topN=rerank_topN) if use_rerank else hybrid_hits
 
     final_hits = ranked[:top_k]

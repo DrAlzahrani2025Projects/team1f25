@@ -1,10 +1,10 @@
 # app/core/llm_client.py
 from __future__ import annotations
 import os
-from typing import Iterable, List, Dict, Optional, Union  # <- Union included
+from typing import Iterable, List, Dict, Optional, Union
 from groq import Groq
 
-DEFAULT_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+DEFAULT_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
 TIMEOUT = float(os.getenv("GROQ_TIMEOUT", "30"))
 
 class GroqLLM:
@@ -18,10 +18,16 @@ class GroqLLM:
     def chat(
         self,
         messages: List[Dict[str, str]],
-        temperature: float = 0.2,
+        temperature: float = None,
         max_tokens: int = 700,
         stream: bool = False,
     ) -> Union[str, Iterable[str]]:
+        if temperature is None:
+            try:
+                temperature = float(os.getenv("GROQ_TEMPERATURE", "0.2"))
+            except Exception:
+                temperature = 0.2
+
         resp = self.client.chat.completions.create(
             model=self.model,
             messages=messages,
