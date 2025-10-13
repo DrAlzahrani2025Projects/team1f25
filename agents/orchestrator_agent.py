@@ -23,7 +23,6 @@ def handle(input: AgentInput) -> AgentOutput:
         txt = (
             f"Top {len(briefs)} results for **{terms}**:\n\n"
             + "\n".join(lines)
-            + "\n\n_(Reply **export** or press the button to save these to /data/primo/records.jsonl.)_"
         )
         return AgentOutput(
             text=txt,
