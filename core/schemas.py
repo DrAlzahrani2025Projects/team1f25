@@ -22,3 +22,6 @@ class AgentOutput(BaseModel):
     text: str
     list_items: List[str] = []
     hits: List[QAHit] = []
+    # NEW: allow app to render and export later
+    briefs: List[ArticleBrief] = []
+    await_export: bool = False
