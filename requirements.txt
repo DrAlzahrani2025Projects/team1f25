@@ -1,2 +1,6 @@
 streamlit
-groq
+pydantic
+requests
+urllib3
+chromadb
+fastembed
