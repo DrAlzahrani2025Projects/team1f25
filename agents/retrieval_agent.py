@@ -57,5 +57,6 @@ def fetch_pnx_for_briefs(briefs: List[ArticleBrief]) -> List[Dict[str, Any]]:
 
 def export_briefs_with_pnx(briefs: List[ArticleBrief]) -> int:
     """Fetch PNX for each brief and append (deduped) to /data/primo/records.jsonl."""
-    full = fetch_pnx_for_briefs(briefs)
-    return append_records(full)
+    records = fetch_pnx_for_briefs(briefs)
+    result = append_records(records)
+    return result
