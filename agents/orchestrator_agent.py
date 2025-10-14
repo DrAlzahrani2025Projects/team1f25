@@ -5,7 +5,7 @@ from core.schemas import AgentInput, AgentOutput, ArticleBrief
 from core.utils import detect_intent, extract_top_n, strip_to_search_terms
 from agents.retrieval_agent import search_articles, export_briefs_with_pnx
 from agents.embedding_agent import index_jsonl
-from agents.rag_agent_stub import answer as rag_answer  # replace in week 4
+from agents.rag_agent import answer as rag_answer
 
 # In-memory stash of the last listed briefs (per process).
 _LAST_BRIEFS: List[ArticleBrief] = []
