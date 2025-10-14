@@ -1,5 +1,4 @@
 # core/jsonl_store.py
-from __future__ import annotations
 import os, json
 from typing import List, Dict, Any, Set
 

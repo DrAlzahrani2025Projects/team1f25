@@ -1,5 +1,4 @@
 # core/embedding_model.py
-from __future__ import annotations
 from typing import List
 from fastembed import TextEmbedding
 

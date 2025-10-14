@@ -1,4 +1,4 @@
-from __future__ import annotations
+# core/utils.py
 import os, re
 
 PRIMO_VID = os.getenv("PRIMO_VID", "01CALS_USB:01CALS_USB")

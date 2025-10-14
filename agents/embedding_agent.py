@@ -1,5 +1,4 @@
 # agents/embedding_agent.py
-from __future__ import annotations
 import os, json, uuid
 from typing import List, Dict, Any, Iterable, Tuple
 from core.embedding_model import Embedder
@@ -174,14 +173,3 @@ def index_jsonl(jsonl_path: str = PRIMO_JSONL, batch: int = 128) -> Dict[str, in
             except Exception:
                 continue
     return upsert_records(records, batch=batch)
-
-# ---------- tiny CLI ----------
-
-if __name__ == "__main__":
-    import argparse, json as _json
-    p = argparse.ArgumentParser(description="Week 3 Embedding Agent — index exported JSONL")
-    p.add_argument("--file", default=PRIMO_JSONL, help="Path to records.jsonl")
-    p.add_argument("--batch", type=int, default=128, help="Batch size")
-    args = p.parse_args()
-    stats = index_jsonl(args.file, batch=args.batch)
-    print(_json.dumps({"ok": True, **stats}, indent=2))

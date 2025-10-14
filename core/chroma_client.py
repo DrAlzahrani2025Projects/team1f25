@@ -1,5 +1,4 @@
 # core/chroma_client.py
-from __future__ import annotations
 import os
 import chromadb
 from typing import List, Dict, Any, Iterable
