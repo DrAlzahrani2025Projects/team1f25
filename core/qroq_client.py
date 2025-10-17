@@ -38,8 +38,6 @@
 #                 Extract delta content
 #                 If present, yield delta
 #         If error, raise runtime error
-  # agents/rag_agent.py
-# core/qroq_client.py
 
 import os
 from typing import Any, Dict, Iterable, List, Optional, Union
