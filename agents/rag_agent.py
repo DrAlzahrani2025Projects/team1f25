@@ -19,7 +19,6 @@
 #     Build messages list with system and user messages (including context)
 #     Call chat method on QroqClient with messages
 #     Return dictionary with answer and hits
-# agents/rag_agent.py
 
 from typing import Any, Dict, List, Optional
 from core.embedding_model import Embedder
