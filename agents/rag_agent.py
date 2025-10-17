@@ -71,7 +71,7 @@ def _synthesize_answer(question: str, hits: List[QAHit]) -> str:
         m = h.meta or {}
         title = m.get("title") or "Untitled"
         creators = ", ".join(m.get("creators") or []) if isinstance(m.get("creators"), list) else (m.get("creators") or "")
-        year = (m.get("date") or "").strip()
+        year = str(m.get("date") or "").strip()
         pieces = [p for p in [creators, year] if p]
         label = f"**{title}**" + (f" — {', '.join(pieces)}" if pieces else "")
         if m.get("permalink"):
