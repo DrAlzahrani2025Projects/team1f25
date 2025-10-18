@@ -1,5 +1,6 @@
 # agents/rag_agent.py
 from typing import Any, Dict, List, Tuple
+from functools import lru_cache
 from core.embedding_model import Embedder
 from core.chroma_client import get_collection, query
 from core.qroq_client import QroqClient
@@ -52,6 +53,22 @@ def _build_context(hits: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, Any]
     return "\n\n".join(lines), normalized
 
 
+# Cache singletons to avoid expensive repeated initialization
+@lru_cache(maxsize=1)
+def _get_embedder() -> Embedder:
+    return Embedder()
+
+
+@lru_cache(maxsize=1)
+def _get_collection_cached():
+    return get_collection()
+
+
+@lru_cache(maxsize=1)
+def _get_qroq_client() -> QroqClient:
+    return QroqClient()
+
+
 def rag_answer(question: str, top_k: int = 6) -> Dict[str, Any]:
     """Run a RAG query against Chroma and answer with a Groq LLM.
 
@@ -64,19 +81,19 @@ def rag_answer(question: str, top_k: int = 6) -> Dict[str, Any]:
             - "answer": str, the LLM's final answer text
             - "hits": List[Dict], the retrieved documents with minimal fields
     """
-    # 1) Embed the question
-    embedder = Embedder()
+    # 1) Embed the question (cached Embedder)
+    embedder = _get_embedder()
     q_vec = embedder.embed([question])[0]
 
-    # 2) Get Chroma collection and retrieve neighbors
-    coll = get_collection()
+    # 2) Get Chroma collection and retrieve neighbors (cached collection)
+    coll = _get_collection_cached()
     hits = query(coll, q_vec, top_k=int(top_k))
 
     # 3) Build formatted context for the LLM and normalize hits
     context_str, norm_hits = _build_context(hits)
 
-    # 4) Compose messages and query Groq
-    client = QroqClient()
+    # 4) Compose messages and query Groq (cached client)
+    client = _get_qroq_client()
     messages: List[Dict[str, str]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {
