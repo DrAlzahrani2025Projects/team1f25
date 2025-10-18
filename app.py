@@ -8,7 +8,7 @@ st.set_page_config(page_title="Scholar AI Assistant", page_icon="📚", layout="
 
 def main():
     st.subheader("Scholar AI Assistant")
-    st.caption("Type queries like **List top 10 ott subscriber churn articles**, **feed**, or **feed ott churn**.")
+    st.caption("Type queries like **List top 10 ott subscriber churn articles**")
 
     if "chat" not in st.session_state:
         st.session_state["chat"] = []
@@ -18,7 +18,7 @@ def main():
         with st.chat_message(role):
             st.markdown(content)
 
-    prompt = st.chat_input("Ask or type 'feed' / 'feed <query>'")
+    prompt = st.chat_input("Enter your request here...")
     if not prompt:
         return
 
