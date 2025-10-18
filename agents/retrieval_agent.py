@@ -1,5 +1,4 @@
 # agents/retrieval_agent.py
-from __future__ import annotations
 from typing import List, Dict, Any
 from core.schemas import ArticleBrief
 from core.utils import fulldisplay_link
