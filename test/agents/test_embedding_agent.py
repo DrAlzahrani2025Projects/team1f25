@@ -1,7 +1,6 @@
 # test/agents/test_embedding_agent.py
 import unittest
 from unittest.mock import patch, MagicMock
-from core.embedding_model import Embedder
 from agents import embedding_agent
 import json
 
