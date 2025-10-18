@@ -51,14 +51,29 @@ class QroqClient:
         self.model = (
             model
             or os.getenv("GROQ_MODEL")
-            or "llama-3.1-8b-instant"
+            or "llama-3.3-70b-versatile"
         )
-        self.temperature = float(
-            temperature if temperature is not None else os.getenv("GROQ_TEMPERATURE", 0.2)
-        )
-        self.max_tokens = int(
-            max_tokens if max_tokens is not None else os.getenv("GROQ_MAX_TOKENS", 1024)
-        )
+        # Safely coerce environment variables for temperature and max_tokens
+        temp_env = os.getenv("GROQ_TEMPERATURE")
+        if temperature is not None:
+            self.temperature = float(temperature)
+        elif temp_env is not None:
+            try:
+                self.temperature = float(temp_env)
+            except (ValueError, TypeError):
+                self.temperature = 0.2
+        else:
+            self.temperature = 0.2
+        tokens_env = os.getenv("GROQ_MAX_TOKENS")
+        if max_tokens is not None:
+            self.max_tokens = int(max_tokens)
+        elif tokens_env is not None:
+            try:
+                self.max_tokens = int(tokens_env)
+            except (ValueError, TypeError):
+                self.max_tokens = 1024
+        else:
+            self.max_tokens = 1024
 
         self._client = Groq(api_key=self.api_key)
 
@@ -84,8 +99,15 @@ class QroqClient:
 
         try:
             resp = self._client.chat.completions.create(**payload)
-            # Groq uses OpenAI-compatible response schema
-            return (resp.choices[0].message.content or "").strip()
+            choices = getattr(resp, "choices", None) or []
+            if not choices:
+                raise RuntimeError(
+                    "Groq chat() returned no choices — the response may have been blocked by safety filters."
+                )
+            first_choice = choices[0]
+            message = getattr(first_choice, "message", None)
+            content_text = getattr(message, "content", "") if message else ""
+            return (content_text or "").strip()
         except Exception as e:
             raise RuntimeError(f"Groq chat() failed: {e}") from e
 
@@ -112,10 +134,13 @@ class QroqClient:
         try:
             stream = self._client.chat.completions.create(**payload)
             for chunk in stream:
-                # OpenAI-compatible delta format
-                delta = getattr(chunk.choices[0], "delta", None)
+                choices = getattr(chunk, "choices", None) or []
+                if not choices:
+                    raise RuntimeError(
+                        "Groq chat_stream() returned a chunk with no choices — the stream may have been filtered or is malformed."
+                    )
+                delta = getattr(choices[0], "delta", None)
                 if delta and getattr(delta, "content", None):
                     yield delta.content
         except Exception as e:
             raise RuntimeError(f"Groq chat_stream() failed: {e}") from e
-
