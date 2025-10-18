@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, List
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from core.logging_utils import get_logger
 
 PRIMO_PUBLIC_BASE = os.getenv("PRIMO_PUBLIC_BASE", "https://csu-sb.primo.exlibrisgroup.com/primaws/rest/pub")
 PRIMO_VID   = os.getenv("PRIMO_VID",   "01CALS_USB:01CALS_USB")
@@ -23,18 +24,41 @@ def _session() -> requests.Session:
     return s
 
 S = _session()
+_log = get_logger(__name__)
 
-def build_q(any_query: str, *, lang_code: str|None, peer_reviewed: bool, rtype: str|None) -> str:
+def build_q(
+    any_query: str,
+    *,
+    lang_code: str | None,
+    peer_reviewed: bool,
+    rtype: str | None,
+    authors: Optional[List[str]] = None,
+) -> str:
     parts = [f"any,contains,{any_query}"]
+    # If authors provided, add creator clauses (ANDed)
+    if authors:
+        for a in authors:
+            a = (a or "").strip()
+            if a:
+                parts.append(f"creator,contains,{a}")
     if lang_code:
         parts.append(f"lang,exact,{lang_code}")
     if peer_reviewed:
-        parts.append("tlevel,exact,peer_reviewed")
+        parts.append("facet_tlevel,exact,peer_reviewed")
     if rtype:
         parts.append(f"rtype,exact,{rtype}")
     return ",AND;".join(parts)
 
-def explore_search(q: str | None = None, limit: int = 10, offset: int = 0, *, query: str | None = None, sort: str = "rank") -> Dict[str, Any]:
+def explore_search(
+    q: str | None = None,
+    limit: int = 10,
+    offset: int = 0,
+    *,
+    query: str | None = None,
+    sort: str = "rank",
+    dr_s: Optional[str] = None,
+    dr_e: Optional[str] = None,
+) -> Dict[str, Any]:
     if (not q) and query:
         q = query
     if not q:
@@ -47,27 +71,44 @@ def explore_search(q: str | None = None, limit: int = 10, offset: int = 0, *, qu
         "skipDelivery": "Y", "rtaLinks": "true", "rapido": "true",
         "showPnx": "true",
     }
+    # Add date range parameters if provided (YYYYMMDD)
+    if dr_s:
+        params["dr_s"] = dr_s
+    if dr_e:
+        params["dr_e"] = dr_e
     r = S.get(url, params=params, timeout=PRIMO_TIMEOUT)
     if r.status_code >= 400:
         raise requests.HTTPError(f"Explore {r.status_code}: {r.text[:400]}")
-    return r.json()
+    data = r.json()
+    return data
 
-def search_with_filters(*, query: str, limit: int, lang_code: str = "eng", peer_reviewed: bool = False,
-                        rtypes: Optional[List[str]] = None, year_from: int = 1900, year_to: int = 2100,
-                        sort: str = "rank") -> Dict[str, Any]:
-    rtypes = rtypes or ["articles"]
+def search_with_filters(*, query: str, limit: int, lang_code: Optional[str] = "eng", peer_reviewed: bool = False,
+                        rtypes: Optional[List[Optional[str]]] = None, year_from: int = 1900, year_to: int = 2100,
+                        sort: str = "rank", authors: Optional[List[str]] = None) -> Dict[str, Any]:
+    # If rtypes is None, run a single pass without an rtype facet
+    rtypes = rtypes if rtypes is not None else [None]
     seen, out = set(), []
     for rt in rtypes:
-        q = build_q(query, lang_code=lang_code, peer_reviewed=peer_reviewed, rtype=rt)
-        resp = explore_search(q=q, limit=limit, sort=sort)
+        q = build_q(
+            query,
+            lang_code=lang_code,
+            peer_reviewed=peer_reviewed,
+            rtype=rt,
+            authors=authors,
+        )
+        # Build YYYYMMDD date range (inclusive)
+        yf = int(year_from) if year_from is not None else None
+        yt = int(year_to) if year_to is not None else None
+        if yf is not None and yt is not None and yt < yf:
+            yf, yt = yt, yf
+        drs = f"{yf}0101" if yf is not None else None
+        dre = f"{yt}1231" if yt is not None else None
+        _log.info("Primo search q='%s' limit=%s sort=%s dr_s=%s dr_e=%s", q, limit, sort, drs, dre)
+        resp = explore_search(q=q, limit=limit, sort=sort, dr_s=drs, dr_e=dre)
         docs = resp.get("docs", []) or []
+        _log.info("Primo returned %d docs (pre-filter)", len(docs))
         for d in docs:
             rid = d.get("id") or (d.get("pnx", {}).get("control", {}).get("recordid") or [""])[0]
-            year = (d.get("pnx", {}).get("sort", {}).get("creationdate") or [""])[0]
-            try: y = int(str(year)[:4]) if year else None
-            except Exception: y = None
-            if y and (y < year_from or y > year_to):
-                continue
             if rid and rid not in seen:
                 seen.add(rid)
                 out.append(d)
@@ -75,6 +116,7 @@ def search_with_filters(*, query: str, limit: int, lang_code: str = "eng", peer_
                 break
         if len(out) >= limit:
             break
+    _log.info("Primo after filters: %d docs", len(out))
     return {"docs": out, "total": len(out)}
 
 def _cache_path(record_id: str, ctx: str) -> str:
