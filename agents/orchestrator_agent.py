@@ -5,14 +5,20 @@ from langgraph.graph import StateGraph, END
 from core.schemas import AgentInput, AgentOutput, ArticleBrief
 from core.utils import detect_intent, extract_top_n, strip_to_search_terms
 from agents.retrieval_agent import search_articles, export_briefs_with_pnx
-from agents.embedding_agent import index_jsonl
+from agents.embedding_agent import (
+    index_jsonl,
+    index_jsonl_recent,
+    index_jsonl_incremental,
+)
 from agents.rag_agent import rag_answer
+from core.logging_utils import get_logger
 
 
 # -------------------------
 # (optional) process-local memory (kept for future use, but not used now)
 # -------------------------
 _LAST_BRIEFS: List[ArticleBrief] = []
+_log = get_logger(__name__)
 
 
 def _format_list(briefs: List[ArticleBrief], terms: str) -> str:
@@ -67,17 +73,36 @@ def list_node(state: OrchestratorState) -> OrchestratorState:
     """
     terms = state.get("terms") or ""
     topn = int(state.get("topn") or 10)
+    _log.info("Orchestrator LIST start: terms='%s' topn=%d", terms, topn)
 
     # 1) search
     briefs = search_articles(terms, n=topn, peer_reviewed=False, sort="rank")
     if not briefs:
+        _log.info("Orchestrator LIST: no results for terms='%s'", terms)
+        # reset cache on no results
+        global _LAST_BRIEFS
+        _LAST_BRIEFS = []
         return {**state, "briefs": [], "message": f"No results found for **{terms}**."}
+
+    # Build preview once for reuse
+    preview = _format_list(briefs, terms)
+
+    # Fast-path: if results are the same as last time, avoid re-export / re-index
+    try:
+        last_ids = {b.record_id for b in _LAST_BRIEFS}
+        curr_ids = {b.record_id for b in briefs}
+        if last_ids and curr_ids and last_ids == curr_ids:
+            _log.info("Orchestrator LIST: identical results as last run; skipping export/index")
+            return {**state, "briefs": briefs, "message": f"{preview}\n\n"}
+    except Exception:
+        # Non-fatal; proceed normally
+        pass
 
     # 2) export (writes /data/primo/records.jsonl, deduped)
     try:
         exported = export_briefs_with_pnx(briefs)
+        _log.info("Orchestrator LIST: exported=%d", exported)
     except Exception as e:
-        preview = _format_list(briefs, terms)
         return {
             **state,
             "briefs": briefs,
@@ -85,22 +110,56 @@ def list_node(state: OrchestratorState) -> OrchestratorState:
         }
 
     # 3) index to Chroma
-    try:
-        stats = index_jsonl()  # {'added': X, 'skipped_empty': Y}
-    except Exception as e:
-        preview = _format_list(briefs, terms)
+    # Skip indexing if nothing new was exported as a quick optimization
+    if exported == 0:
+        _log.info("Orchestrator LIST: no new records to index; skipping indexing step")
+        # Update cache
+        _LAST_BRIEFS = briefs
+        msg = (f"{preview}\n\n")
         return {
             **state,
             "briefs": briefs,
             "export_count": exported,
-            "message": f"{preview}\n\n⚠️ Indexing error after export: {e}",
+            "message": msg,
         }
 
+    # Prefer incremental indexing; if we just appended N records, try a tail-only pass first.
+    try:
+        if isinstance(exported, int) and exported > 0:
+            try:
+                stats = index_jsonl_recent(exported)
+            except Exception as e_recent:
+                _log.warning(
+                    "Orchestrator LIST: recent index failed (%s); falling back to incremental",
+                    e_recent,
+                )
+                stats = index_jsonl_incremental()
+        else:
+            stats = index_jsonl_incremental()
+        _log.info("Orchestrator LIST: index stats=%s", stats)
+    except Exception as e_incr:
+        _log.warning(
+            "Orchestrator LIST: incremental index failed (%s); falling back to full scan",
+            e_incr,
+        )
+        try:
+            stats = index_jsonl()  # full scan as last resort
+            _log.info("Orchestrator LIST: full index stats=%s", stats)
+        except Exception as e_full:
+            return {
+                **state,
+                "briefs": briefs,
+                "export_count": exported,
+                "message": f"{preview}\n\n⚠️ Indexing error after export: {e_full}",
+            }
+
     # Success message + preview
-    preview = _format_list(briefs, terms)
     msg = (
         f"{preview}\n\n"
     )
+
+    # Update cache
+    _LAST_BRIEFS = briefs
 
     return {
         **state,

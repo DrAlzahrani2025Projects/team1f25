@@ -4,6 +4,7 @@ from functools import lru_cache
 from core.embedding_model import Embedder
 from core.chroma_client import get_collection, query
 from core.qroq_client import QroqClient
+from core.logging_utils import get_logger
 
 # --- System prompt for the assistant used in RAG ---
 SYSTEM_PROMPT = (
@@ -13,6 +14,8 @@ SYSTEM_PROMPT = (
     "Cite sources inline using bracketed numbers that map to the context items, e.g., [1], [2].\n"
     "Do not invent citations or links. Keep the answer concise and accurate."
 )
+
+_log = get_logger(__name__)
 
 
 def _build_context(hits: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, Any]]]:
@@ -82,6 +85,7 @@ def rag_answer(question: str, top_k: int = 6) -> Dict[str, Any]:
             - "hits": List[Dict], the retrieved documents with minimal fields
     """
     # 1) Embed the question (cached Embedder)
+    _log.info("RAG start: top_k=%d", top_k)
     embedder = _get_embedder()
     q_vec = embedder.embed([question])[0]
 
@@ -108,6 +112,7 @@ def rag_answer(question: str, top_k: int = 6) -> Dict[str, Any]:
     ]
 
     answer = client.chat(messages)
+    _log.info("RAG done: hits=%d answer_len=%d", len(norm_hits), len(answer or ""))
 
     return {"answer": answer, "hits": norm_hits}
 

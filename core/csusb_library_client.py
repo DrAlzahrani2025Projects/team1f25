@@ -1,6 +1,7 @@
 # core/csusb_library_client.py
-import os, json
-from typing import Dict, Any, Optional, List
+import json
+import os
+from typing import Any, Dict, List, Optional
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -126,7 +127,8 @@ def _cache_path(record_id: str, ctx: str) -> str:
 
 def fetch_full_with_fallback(record_id: str, context_hint: Optional[str] = None) -> Dict[str, Any]:
     for ctx in [context_hint, "L", "PC"]:
-        if not ctx: continue
+        if not ctx:
+            continue
         p = _cache_path(record_id, ctx)
         if os.path.exists(p):
             try:
@@ -138,7 +140,9 @@ def fetch_full_with_fallback(record_id: str, context_hint: Optional[str] = None)
         r = S.get(url, params=params, timeout=PRIMO_TIMEOUT)
         if r.ok:
             data = r.json()
-            try: json.dump(data, open(p, "w", encoding="utf-8"))
-            except Exception: pass
+            try:
+                json.dump(data, open(p, "w", encoding="utf-8"))
+            except Exception:
+                pass
             return data
     raise RuntimeError(f"Could not fetch PNX for {record_id}")
