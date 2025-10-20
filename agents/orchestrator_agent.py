@@ -1,44 +1,24 @@
 # agents/orchestrator_agent.py
-from __future__ import annotations
 from functools import lru_cache
-from typing import List, Optional, Dict, Any, TypedDict
+from typing import List, Dict, Any, TypedDict
 from langgraph.graph import StateGraph, END
-# (optional) in-memory checkpoint; not strictly needed here
-# from langgraph.checkpoint.memory import MemorySaver
 from core.schemas import AgentInput, AgentOutput, ArticleBrief
 from core.utils import detect_intent, extract_top_n, strip_to_search_terms
 from agents.retrieval_agent import search_articles, export_briefs_with_pnx
-from agents.embedding_agent import index_jsonl
+from agents.embedding_agent import (
+    index_jsonl,
+    index_jsonl_recent,
+    index_jsonl_incremental,
+)
 from agents.rag_agent import rag_answer
+from core.logging_utils import get_logger
 
 
 # -------------------------
-# Process-local memory (used by `feed` without query)
+# (optional) process-local memory (kept for future use, but not used now)
 # -------------------------
 _LAST_BRIEFS: List[ArticleBrief] = []
-
-
-def _set_last_briefs(briefs: List[ArticleBrief]) -> None:
-    global _LAST_BRIEFS
-    _LAST_BRIEFS = briefs or []
-
-
-def _get_last_briefs() -> List[ArticleBrief]:
-    return list(_LAST_BRIEFS)
-
-
-def _is_feed_command(text: str) -> bool:
-    return text.strip().lower().startswith("feed")
-
-
-def _parse_feed_query(text: str) -> Optional[str]:
-    t = text.strip()
-    if t.lower() == "feed":
-        return None
-    if t.lower().startswith("feed "):
-        q = t[len("feed "):].strip()
-        return q or None
-    return None
+_log = get_logger(__name__)
 
 
 def _format_list(briefs: List[ArticleBrief], terms: str) -> str:
@@ -55,8 +35,7 @@ def _format_list(briefs: List[ArticleBrief], terms: str) -> str:
 # -------------------------
 class OrchestratorState(TypedDict, total=False):
     user_input: str
-    intent: str                 # "LIST" | "ANSWER" | "FEED"
-    feed_query: Optional[str]   # for "feed <query>"
+    intent: str                 # "LIST" | "ANSWER"
     terms: str
     topn: int
     briefs: List[ArticleBrief]
@@ -73,56 +52,115 @@ def route_node(state: OrchestratorState) -> OrchestratorState:
     user = (state.get("user_input") or "").strip()
     out: OrchestratorState = dict(state)
 
-    # FEED has priority
-    if _is_feed_command(user):
-        out["intent"] = "FEED"
-        out["feed_query"] = _parse_feed_query(user)
-        return out
-
-    # Otherwise LIST / ANSWER
-    out["intent"] = detect_intent(user)
-    if out["intent"] == "LIST":
+    # Only two intents are supported now: LIST or ANSWER
+    intent = detect_intent(user)
+    if intent == "LIST":
+        out["intent"] = "LIST"
         out["topn"] = extract_top_n(user, 10)
         out["terms"] = strip_to_search_terms(user)
+    else:
+        out["intent"] = "ANSWER"
+
     return out
 
 
 def list_node(state: OrchestratorState) -> OrchestratorState:
+    """
+    Auto-feed on LIST:
+      1) Search OneSearch
+      2) Export full PNX for found briefs
+      3) Index into Chroma (idempotent)
+    """
     terms = state.get("terms") or ""
     topn = int(state.get("topn") or 10)
+    _log.info("Orchestrator LIST start: terms='%s' topn=%d", terms, topn)
 
+    # 1) search
     briefs = search_articles(terms, n=topn, peer_reviewed=False, sort="rank")
-    _set_last_briefs(briefs)
-    preview = _format_list(briefs, terms)
-    preview += "\n\n_(Type **feed** to export these results and index them to the vector DB.)_"
-
-    return {
-        **state,
-        "briefs": briefs,
-        "message": preview,
-    }
-
-
-def feed_query_node(state: OrchestratorState) -> OrchestratorState:
-    raw_q = state.get("feed_query") or ""
-    n = extract_top_n(raw_q, 20)
-    terms = strip_to_search_terms(raw_q)
-
-    briefs = search_articles(terms, n=n, peer_reviewed=False, sort="rank")
     if not briefs:
-        return {**state, "message": f"No results found for **{terms}**."}
+        _log.info("Orchestrator LIST: no results for terms='%s'", terms)
+        # reset cache on no results
+        global _LAST_BRIEFS
+        _LAST_BRIEFS = []
+        return {**state, "briefs": [], "message": f"No results found for **{terms}**."}
 
-    _set_last_briefs(briefs)
-
-    exported = export_briefs_with_pnx(briefs)
-    stats = index_jsonl()  # {'added': X, 'skipped_empty': Y}
-
+    # Build preview once for reuse
     preview = _format_list(briefs, terms)
+
+    # Fast-path: if results are the same as last time, avoid re-export / re-index
+    try:
+        last_ids = {b.record_id for b in _LAST_BRIEFS}
+        curr_ids = {b.record_id for b in briefs}
+        if last_ids and curr_ids and last_ids == curr_ids:
+            _log.info("Orchestrator LIST: identical results as last run; skipping export/index")
+            return {**state, "briefs": briefs, "message": f"{preview}\n\n"}
+    except Exception:
+        # Non-fatal; proceed normally
+        pass
+
+    # 2) export (writes /data/primo/records.jsonl, deduped)
+    try:
+        exported = export_briefs_with_pnx(briefs)
+        _log.info("Orchestrator LIST: exported=%d", exported)
+    except Exception as e:
+        return {
+            **state,
+            "briefs": briefs,
+            "message": f"{preview}\n\n⚠️ Export error: {e}",
+        }
+
+    # 3) index to Chroma
+    # Skip indexing if nothing new was exported as a quick optimization
+    if exported == 0:
+        _log.info("Orchestrator LIST: no new records to index; skipping indexing step")
+        # Update cache
+        _LAST_BRIEFS = briefs
+        msg = (f"{preview}\n\n")
+        return {
+            **state,
+            "briefs": briefs,
+            "export_count": exported,
+            "message": msg,
+        }
+
+    # Prefer incremental indexing; if we just appended N records, try a tail-only pass first.
+    try:
+        if isinstance(exported, int) and exported > 0:
+            try:
+                stats = index_jsonl_recent(exported)
+            except Exception as e_recent:
+                _log.warning(
+                    "Orchestrator LIST: recent index failed (%s); falling back to incremental",
+                    e_recent,
+                )
+                stats = index_jsonl_incremental()
+        else:
+            stats = index_jsonl_incremental()
+        _log.info("Orchestrator LIST: index stats=%s", stats)
+    except Exception as e_incr:
+        _log.warning(
+            "Orchestrator LIST: incremental index failed (%s); falling back to full scan",
+            e_incr,
+        )
+        try:
+            stats = index_jsonl()  # full scan as last resort
+            _log.info("Orchestrator LIST: full index stats=%s", stats)
+        except Exception as e_full:
+            return {
+                **state,
+                "briefs": briefs,
+                "export_count": exported,
+                "message": f"{preview}\n\n⚠️ Indexing error after export: {e_full}",
+            }
+
+    # Success message + preview
     msg = (
         f"{preview}\n\n"
-        f"✅ Feed complete — Exported **{exported}** new records and indexed "
-        f"`added={stats.get('added',0)}` · `skipped_empty={stats.get('skipped_empty',0)}`."
     )
+
+    # Update cache
+    _LAST_BRIEFS = briefs
+
     return {
         **state,
         "briefs": briefs,
@@ -132,24 +170,9 @@ def feed_query_node(state: OrchestratorState) -> OrchestratorState:
     }
 
 
-def feed_last_node(state: OrchestratorState) -> OrchestratorState:
-    last = _get_last_briefs()
-    if not last:
-        return {**state, "message": "Nothing to feed yet. Ask me to **list** some articles first, then type **feed**."}
-
-    exported = export_briefs_with_pnx(last)
-    stats = index_jsonl()
-    msg = (
-        f"✅ Feed complete — Exported **{exported}** new records and indexed "
-        f"`added={stats.get('added',0)}` · `skipped_empty={stats.get('skipped_empty',0)}`."
-    )
-    return {**state, "export_count": exported, "index_stats": stats, "message": msg}
-
-
 def answer_node(state: OrchestratorState) -> OrchestratorState:
     user = state.get("user_input") or ""
-    ans = rag_answer(user)
-    # ans: {"answer": str, "hits": [...]}
+    ans = rag_answer(user)  # returns {"answer": str, "hits": [...]}
     return {
         **state,
         "message": ans.get("answer") or "I don’t know.",
@@ -166,48 +189,34 @@ def _compile_graph():
 
     g.add_node("route", route_node)
     g.add_node("list", list_node)
-    g.add_node("feed_query", feed_query_node)
-    g.add_node("feed_last", feed_last_node)
     g.add_node("answer", answer_node)
 
     g.set_entry_point("route")
 
     # Conditional edges from route
     def _branch(state: OrchestratorState):
-        intent = state.get("intent")
-        if intent == "FEED":
-            return "feed_query" if state.get("feed_query") else "feed_last"
-        if intent == "LIST":
-            return "list"
-        return "answer"
+        return "list" if state.get("intent") == "LIST" else "answer"
 
     g.add_conditional_edges("route", _branch, {
-        "feed_query": "feed_query",
-        "feed_last": "feed_last",
         "list": "list",
         "answer": "answer",
     })
 
-    # All leaf nodes end
+    # Leaves
     g.add_edge("list", END)
-    g.add_edge("feed_query", END)
-    g.add_edge("feed_last", END)
     g.add_edge("answer", END)
-
-    # If you want checkpointing across turns, enable a checkpointer:
-    # memory = MemorySaver()
-    # return g.compile(checkpointer=memory)
 
     return g.compile()
 
 
 # -------------------------
-# Public API (unchanged)
+# Public API
 # -------------------------
 def handle(input: AgentInput) -> AgentOutput:
     """
     Orchestrate the user's request using a LangGraph.
-    Keeps the same return type used by the Streamlit UI.
+    LIST -> search + export PNX + index (auto-feed)
+    otherwise -> RAG answer
     """
     graph = _compile_graph()
     try:
@@ -216,6 +225,5 @@ def handle(input: AgentInput) -> AgentOutput:
         return AgentOutput(text=f"Orchestration error: {e}")
 
     txt = final_state.get("message") or "I don’t know."
-    # Optionally surface RAG hits later if your UI wants them:
     hits = final_state.get("answer_hits") or []
     return AgentOutput(text=txt, hits=hits, list_items=[])

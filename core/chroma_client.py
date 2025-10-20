@@ -2,6 +2,7 @@
 import os
 import chromadb
 from typing import List, Dict, Any, Iterable, Optional
+from core.logging_utils import get_logger
 
 DATA_DIR = os.getenv("DATA_DIR", "/data")
 if os.name == "posix" and (":" in DATA_DIR or DATA_DIR.startswith(("C:\\", "C:/"))):
@@ -9,7 +10,10 @@ if os.name == "posix" and (":" in DATA_DIR or DATA_DIR.startswith(("C:\\", "C:/"
 CHROMA_DIR = os.path.join(DATA_DIR, "chroma")
 COLLECTION = os.getenv("CHROMA_COLLECTION", "csusb_primo")
 
+_log = get_logger(__name__)
+
 def get_collection():
+    _log.info("Chroma: open collection name=%s path=%s", COLLECTION, CHROMA_DIR)
     client = chromadb.PersistentClient(path=CHROMA_DIR)
     return client.get_or_create_collection(COLLECTION)
 
@@ -35,11 +39,13 @@ def upsert(
     embeddings: List[List[float]],
 ) -> int:
     if hasattr(coll, "upsert"):
+        _log.debug("Chroma upsert fast-path: n=%d", len(ids))
         coll.upsert(ids=ids, documents=docs, metadatas=metas, embeddings=embeddings)
         return len(ids)
 
     # Fallback path (older clients): try add, then filter duplicates if needed
     try:
+        _log.debug("Chroma add: n=%d", len(ids))
         coll.add(ids=ids, documents=docs, metadatas=metas, embeddings=embeddings)
         return len(ids)
     except Exception:
@@ -47,6 +53,7 @@ def upsert(
         keep_idx = [i for i, _id in enumerate(ids) if _id not in existing]
         if not keep_idx:
             return 0
+        _log.debug("Chroma add filtered: total=%d new=%d", len(ids), len(keep_idx))
         coll.add(
             ids=[ids[i] for i in keep_idx],
             documents=[docs[i] for i in keep_idx],
@@ -80,6 +87,7 @@ def query(
     if include_vectors:
         include.append("embeddings")
 
+    _log.debug("Chroma query: top_k=%d include_vectors=%s", int(top_k), include_vectors)
     res = coll.query(
         query_embeddings=[q_emb],
         n_results=int(top_k),
@@ -106,4 +114,5 @@ def query(
             hit["embedding"] = embs[i] if i < len(embs) else None
         hits.append(hit)
 
+    _log.debug("Chroma query: returned=%d", len(hits))
     return hits

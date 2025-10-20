@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # Run the cleanup script first
-./cleanup.sh > /dev/null 2>&1 || true
+./cleanup.sh --purge-data --hard > /dev/null 2>&1 || true
 
 HOST_DATA="$PWD/data"
 if [[ -n "${MSYSTEM:-}" ]]; then

@@ -1,6 +1,7 @@
 # core/jsonl_store.py
-import os, json
-from typing import List, Dict, Any, Set
+import json
+import os
+from typing import Any, Dict, List, Set
 
 DATA_DIR = os.getenv("DATA_DIR", "/data")
 if os.name == "posix" and (":" in DATA_DIR or DATA_DIR.startswith(("C:\\", "C:/"))):
