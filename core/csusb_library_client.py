@@ -78,6 +78,7 @@ def explore_search(
     if dr_e:
         params["dr_e"] = dr_e
     r = S.get(url, params=params, timeout=PRIMO_TIMEOUT)
+    _log.info("Primo explore_search URL: %s", r.url)
     if r.status_code >= 400:
         raise requests.HTTPError(f"Explore {r.status_code}: {r.text[:400]}")
     data = r.json()

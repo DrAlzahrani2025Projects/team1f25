@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 class AgentInput(BaseModel):
     user_input: str
 
-class ArticleBrief(BaseModel):
+class SearchBreif(BaseModel):
     record_id: str
     title: str = ""
     creators: List[str] = []
@@ -23,5 +23,5 @@ class AgentOutput(BaseModel):
     list_items: List[str] = []
     hits: List[QAHit] = []
     # NEW: allow app to render and export later
-    briefs: List[ArticleBrief] = []
+    briefs: List[SearchBreif] = []
     await_export: bool = False

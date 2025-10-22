@@ -1,15 +1,6 @@
-# test/agents/test_retrieval_agent.py
-import os
-import sys
+# test/test_retrieval_agent.py
 import unittest
 from unittest.mock import patch
-
-# Ensure project root is on sys.path so 'agents' resolves to the app package,
-# not the test subpackage.
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
-
 from agents import retrieval_agent
 from core.schemas import SearchBreif
 
@@ -23,12 +14,8 @@ class TestRetrievalAgent(unittest.TestCase):
                     "title": ["Sample Article Title"],
                     "creator": ["Doe, Jane", "Smith, John"],
                 },
-                "sort": {
-                    "creationdate": ["2021"]
-                },
-                "control": {
-                    "recordid": ["01CALS_USB_alma9912345678901234"]
-                }
+                "sort": {"creationdate": ["2021"]},
+                "control": {"recordid": ["01CALS_USB_alma9912345678901234"]},
             },
             "link": {
                 "record": "https://example.org/permalink/01CALS_USB_alma9912345678901234"
@@ -53,7 +40,7 @@ class TestRetrievalAgent(unittest.TestCase):
         self.assertEqual(brief.title, self.sample_brief.title)
         self.assertEqual(brief.creators, self.sample_brief.creators)
         self.assertEqual(brief.creation_date, self.sample_brief.creation_date)
-        self.assertEqual(brief.resource_type, "article")
+        self.assertEqual(brief.resource_type, "unknown")  # test doc has no rsrctype/type
         self.assertEqual(brief.context, "PC")
         self.assertTrue(brief.permalink and brief.permalink.startswith("http"))
 
@@ -72,5 +59,5 @@ class TestRetrievalAgent(unittest.TestCase):
         self.assertIn("rtypes", kwargs)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=2)
