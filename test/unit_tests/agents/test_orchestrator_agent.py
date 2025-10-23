@@ -36,8 +36,8 @@ class TestOrchestratorAgent(unittest.TestCase):
         self.assertIn("test", result)
 
     def test_format_list_single_result(self):
-        from core.schemas import SearchBreif
-        brief = SearchBreif(
+        from core.schemas import SearchBrief
+        brief = SearchBrief(
             record_id="TEST1",
             title="Test Title",
             creators=["Author One"],
@@ -56,9 +56,9 @@ class TestOrchestratorAgent(unittest.TestCase):
         self.assertIn("[https://example.org/test1]", result)
 
     def test_format_list_multiple_results(self):
-        from core.schemas import SearchBreif
+        from core.schemas import SearchBrief
         briefs = [
-            SearchBreif(
+            SearchBrief(
                 record_id=f"ID{i}",
                 title=f"Title {i}",
                 creators=[f"Author {i}"],
@@ -76,8 +76,8 @@ class TestOrchestratorAgent(unittest.TestCase):
         self.assertIn("Title 2", result)
 
     def test_format_list_missing_fields(self):
-        from core.schemas import SearchBreif
-        brief = SearchBreif(
+        from core.schemas import SearchBrief
+        brief = SearchBrief(
             record_id="MIN1",
             title="",
             creators=[],
@@ -91,8 +91,8 @@ class TestOrchestratorAgent(unittest.TestCase):
         self.assertIn("—", result)  # em dash for missing fields
 
     def test_format_list_multiple_authors(self):
-        from core.schemas import SearchBreif
-        brief = SearchBreif(
+        from core.schemas import SearchBrief
+        brief = SearchBrief(
             record_id="MA1",
             title="Multi-author Paper",
             creators=["Smith, John", "Doe, Jane", "Lee, Bob"],
@@ -105,8 +105,8 @@ class TestOrchestratorAgent(unittest.TestCase):
         self.assertIn("Smith, John, Doe, Jane, Lee, Bob", result)
 
     def test_format_list_markdown_table_structure(self):
-        from core.schemas import SearchBreif
-        brief = SearchBreif(
+        from core.schemas import SearchBrief
+        brief = SearchBrief(
             record_id="TBL1",
             title="Table Test",
             creators=["Author"],

@@ -7,7 +7,7 @@ formatted list. No side effects, no vector DB, no LLM calls.
 """
 
 from typing import List
-from core.schemas import AgentInput, AgentOutput, SearchBreif
+from core.schemas import AgentInput, AgentOutput, SearchBrief
 from core.utils import extract_top_n, strip_to_search_terms, strip_to_search_type, strip_to_authors, parse_date_range, parse_peer_review_flag
 from agents.retrieval_agent import search
 from core.logging_utils import get_logger
@@ -19,7 +19,7 @@ from core.logging_utils import get_logger
 _log = get_logger(__name__)
 
 
-def _format_list(briefs: List[SearchBreif], terms: str) -> str:
+def _format_list(briefs: List[SearchBrief], terms: str) -> str:
     """Render results as a Markdown table with type, title, authors, created date, and link."""
     header = f"Top {len(briefs)} results for **{terms}**:\n\n"
     lines = ["| # | Type | Title | Authors | Year | Link |", "|---|------|-------|---------|------|------|"]
@@ -54,7 +54,7 @@ def handle(input: AgentInput) -> AgentOutput:
             return AgentOutput(text="Please provide search terms, e.g., 'List top 10 machine learning articles'.")
 
         _log.info("LIST handler: terms='%s' topn=%d type=%s authors=%s yfrom=%s yto=%s pr=%s", terms, topn, stype, authors, yfrom, yto, pr)
-        briefs: List[SearchBreif] = search(terms, n=topn, peer_reviewed=pr, sort="rank", search_type=stype, year_from=yfrom, year_to=yto, authors=authors)
+        briefs: List[SearchBrief] = search(terms, n=topn, peer_reviewed=pr, sort="rank", search_type=stype, year_from=yfrom, year_to=yto, authors=authors)
         if not briefs:
             return AgentOutput(text=f"No results found for **{terms}**.")
 

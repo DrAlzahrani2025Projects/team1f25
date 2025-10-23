@@ -9,7 +9,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from agents import retrieval_agent
-from core.schemas import SearchBreif
+from core.schemas import SearchBrief
 
 
 class TestRetrievalAgentUnit(unittest.TestCase):

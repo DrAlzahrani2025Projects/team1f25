@@ -7,7 +7,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from core.schemas import AgentInput, SearchBreif, QAHit, AgentOutput
+from core.schemas import AgentInput, SearchBrief, QAHit, AgentOutput
 
 
 class TestSchemas(unittest.TestCase):
@@ -19,8 +19,8 @@ class TestSchemas(unittest.TestCase):
         ai = AgentInput(user_input="")
         self.assertEqual(ai.user_input, "")
 
-    def test_search_breif_minimal(self):
-        sb = SearchBreif(record_id="TEST123")
+    def test_search_brief_minimal(self):
+        sb = SearchBrief(record_id="TEST123")
         self.assertEqual(sb.record_id, "TEST123")
         self.assertEqual(sb.title, "")
         self.assertEqual(sb.creators, [])
@@ -29,8 +29,8 @@ class TestSchemas(unittest.TestCase):
         self.assertEqual(sb.context, "PC")
         self.assertIsNone(sb.permalink)
 
-    def test_search_breif_full(self):
-        sb = SearchBreif(
+    def test_search_brief_full(self):
+        sb = SearchBrief(
             record_id="RID456",
             title="Test Article",
             creators=["Author One", "Author Two"],
@@ -47,8 +47,8 @@ class TestSchemas(unittest.TestCase):
         self.assertEqual(sb.context, "L")
         self.assertEqual(sb.permalink, "https://example.org/rid456")
 
-    def test_search_breif_defaults(self):
-        sb = SearchBreif(record_id="ID1", title="Title Only")
+    def test_search_brief_defaults(self):
+        sb = SearchBrief(record_id="ID1", title="Title Only")
         self.assertEqual(sb.creators, [])
         self.assertEqual(sb.creation_date, "")
         self.assertEqual(sb.context, "PC")
@@ -75,8 +75,8 @@ class TestSchemas(unittest.TestCase):
 
     def test_agent_output_with_briefs(self):
         briefs = [
-            SearchBreif(record_id="B1", title="Brief 1"),
-            SearchBreif(record_id="B2", title="Brief 2")
+            SearchBrief(record_id="B1", title="Brief 1"),
+            SearchBrief(record_id="B2", title="Brief 2")
         ]
         ao = AgentOutput(text="Results", briefs=briefs)
         self.assertEqual(len(ao.briefs), 2)
@@ -93,7 +93,7 @@ class TestSchemas(unittest.TestCase):
         self.assertEqual(ao.hits[0].text, "Hit 1")
 
     def test_agent_output_full(self):
-        briefs = [SearchBreif(record_id="ID1", title="T1")]
+        briefs = [SearchBrief(record_id="ID1", title="T1")]
         hits = [QAHit(text="Answer")]
         list_items = ["Item 1", "Item 2"]
         ao = AgentOutput(
@@ -109,9 +109,9 @@ class TestSchemas(unittest.TestCase):
         self.assertEqual(len(ao.briefs), 1)
         self.assertTrue(ao.await_export)
 
-    def test_search_breif_multiple_creators(self):
+    def test_search_brief_multiple_creators(self):
         creators = ["Smith, J.", "Doe, J.", "Lee, B."]
-        sb = SearchBreif(
+        sb = SearchBrief(
             record_id="MC1",
             title="Multi-author work",
             creators=creators
@@ -120,8 +120,8 @@ class TestSchemas(unittest.TestCase):
         self.assertIn("Smith, J.", sb.creators)
         self.assertIn("Doe, J.", sb.creators)
 
-    def test_search_breif_empty_creators(self):
-        sb = SearchBreif(record_id="EC1", creators=[])
+    def test_search_brief_empty_creators(self):
+        sb = SearchBrief(record_id="EC1", creators=[])
         self.assertEqual(sb.creators, [])
 
     def test_agent_output_empty_lists(self):
@@ -130,16 +130,16 @@ class TestSchemas(unittest.TestCase):
         self.assertEqual(len(ao.hits), 0)
         self.assertEqual(len(ao.briefs), 0)
 
-    def test_search_breif_resource_types(self):
+    def test_search_brief_resource_types(self):
         types = ["article", "book", "dissertation", "video", "dataset"]
         for rtype in types:
-            sb = SearchBreif(record_id=f"RT_{rtype}", resource_type=rtype)
+            sb = SearchBrief(record_id=f"RT_{rtype}", resource_type=rtype)
             self.assertEqual(sb.resource_type, rtype)
 
-    def test_search_breif_contexts(self):
+    def test_search_brief_contexts(self):
         contexts = ["PC", "L", "XYZ"]
         for ctx in contexts:
-            sb = SearchBreif(record_id=f"CTX_{ctx}", context=ctx)
+            sb = SearchBrief(record_id=f"CTX_{ctx}", context=ctx)
             self.assertEqual(sb.context, ctx)
 
 

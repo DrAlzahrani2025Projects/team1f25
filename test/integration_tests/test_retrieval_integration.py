@@ -9,7 +9,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from agents import retrieval_agent
-from core.schemas import SearchBreif
+from core.schemas import SearchBrief
 
 
 class TestRetrievalIntegration(unittest.TestCase):
@@ -41,13 +41,13 @@ class TestRetrievalIntegration(unittest.TestCase):
 
     @patch("agents.retrieval_agent.search_with_filters")
     def test_search_returns_briefs(self, mock_search):
-        """Test that search returns properly formatted SearchBreif objects."""
+        """Test that search returns properly formatted SearchBrief objects."""
         mock_search.return_value = {"docs": self._mock_primo_docs(5)}
         
         results = retrieval_agent.search("machine learning", n=5)
         
         self.assertEqual(len(results), 5)
-        self.assertIsInstance(results[0], SearchBreif)
+        self.assertIsInstance(results[0], SearchBrief)
         self.assertEqual(results[0].title, "Test Article 0")
         self.assertEqual(results[0].resource_type, "journal")
 

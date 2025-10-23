@@ -35,7 +35,7 @@ Location: `test/unit_tests/`
 
 - **test_schemas.py** (24 tests)
   - AgentInput validation
-  - SearchBreif model with defaults
+  - SearchBrief model with defaults
   - QAHit metadata handling
   - AgentOutput structure
   - Multiple creators/resource types

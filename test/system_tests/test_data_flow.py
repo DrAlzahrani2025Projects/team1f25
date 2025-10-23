@@ -74,7 +74,7 @@ class TestDataFlowThroughSystem(unittest.TestCase):
         output = orchestrator_agent.handle(AgentInput(user_input="Show articles on data flow"))
         
         # Verify data transformation at each layer
-        # 1. API response -> SearchBreif objects
+        # 1. API response -> SearchBrief objects
         self.assertEqual(len(output.briefs), 1)
         brief = output.briefs[0]
         self.assertEqual(brief.record_id, "FLOW123")
@@ -82,7 +82,7 @@ class TestDataFlowThroughSystem(unittest.TestCase):
         self.assertEqual(brief.creation_date, "2022")  # Year normalized
         self.assertEqual(brief.resource_type, "journal")  # From search.rtype
         
-        # 2. SearchBreif objects -> Formatted text output
+        # 2. SearchBrief objects -> Formatted text output
         self.assertIn("Data Flow in Distributed Systems", output.text)
         self.assertIn("2022", output.text)
         self.assertIn("journal", output.text.lower())

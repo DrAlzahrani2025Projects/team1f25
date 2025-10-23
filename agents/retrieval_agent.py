@@ -1,7 +1,7 @@
 # agents/retrieval_agent.py
 from typing import List, Dict, Any, Optional
 import re
-from core.schemas import SearchBreif
+from core.schemas import SearchBrief
 from core.logging_utils import get_logger
 from core.utils import fulldisplay_link
 from core.csusb_library_client import search_with_filters
@@ -27,7 +27,7 @@ def _as_str_first(v: Any) -> str:
         return ""
 
 
-def _brief_from_doc(d: Dict[str, Any]) -> SearchBreif:
+def _brief_from_doc(d: Dict[str, Any]) -> SearchBrief:
     rid = d.get("id") or (d.get("pnx", {}).get("control", {}).get("recordid") or [""])[0]
     pnx = d.get("pnx", {}) or {}
     disp = pnx.get("display", {}) or {}
@@ -49,7 +49,7 @@ def _brief_from_doc(d: Dict[str, Any]) -> SearchBreif:
     # Prefer search.rtype, fall back to display.type, default to 'article' for compatibility
     rtype = _as_str_first(search_fields.get("rtype")) or _as_str_first(disp.get("type")) or "article"
     ctx = (d.get("context") or "PC")
-    return SearchBreif(
+    return SearchBrief(
         record_id=str(rid),
         title=title or "Untitled",
         creators=creators or [],
@@ -61,7 +61,7 @@ def _brief_from_doc(d: Dict[str, Any]) -> SearchBreif:
 
 def search(query: str, n: int = 10, peer_reviewed: bool = False,
            sort: str = "rank", year_from: int = 1900, year_to: int = 2100,
-           search_type: Optional[str] = None, authors: Optional[List[str]] = None) -> List[SearchBreif]:
+           search_type: Optional[str] = None, authors: Optional[List[str]] = None) -> List[SearchBrief]:
     _log.info("Search start: query='%s' n=%d peer_reviewed=%s sort=%s yfrom=%s yto=%s", query, n, peer_reviewed, sort, year_from, year_to)
     rtypes = [search_type] if search_type else None
     resp = search_with_filters(
@@ -84,7 +84,7 @@ def search(query: str, n: int = 10, peer_reviewed: bool = False,
 # Backward-compatible alias expected by tests/other callers
 def onesearch(query: str, n: int = 10, peer_reviewed: bool = False,
               sort: str = "rank", year_from: int = 1900, year_to: int = 2100,
-              search_type: Optional[str] = None, authors: Optional[List[str]] = None) -> List[SearchBreif]:
+              search_type: Optional[str] = None, authors: Optional[List[str]] = None) -> List[SearchBrief]:
     return search(
         query=query,
         n=n,
