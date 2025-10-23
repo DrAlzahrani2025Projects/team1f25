@@ -2,9 +2,4 @@ streamlit
 pydantic
 requests
 urllib3
-chromadb
-fastembed
-onnxruntime
 groq
-langgraph
-langchain-core

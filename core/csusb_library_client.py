@@ -34,6 +34,8 @@ def build_q(
     peer_reviewed: bool,
     rtype: str | None,
     authors: Optional[List[str]] = None,
+    dr_s: Optional[str] = None,
+    dr_e: Optional[str] = None,
 ) -> str:
     parts = [f"any,contains,{any_query}"]
     # If authors provided, add creator clauses (ANDed)
@@ -42,6 +44,11 @@ def build_q(
             a = (a or "").strip()
             if a:
                 parts.append(f"creator,contains,{a}")
+    # Add date range as query clauses instead of URL params
+    if dr_s:
+        parts.append(f"dr_s,exact,{dr_s}")
+    if dr_e:
+        parts.append(f"dr_e,exact,{dr_e}")
     if lang_code:
         parts.append(f"lang,exact,{lang_code}")
     if peer_reviewed:
@@ -57,8 +64,6 @@ def explore_search(
     *,
     query: str | None = None,
     sort: str = "rank",
-    dr_s: Optional[str] = None,
-    dr_e: Optional[str] = None,
 ) -> Dict[str, Any]:
     if (not q) and query:
         q = query
@@ -72,12 +77,8 @@ def explore_search(
         "skipDelivery": "Y", "rtaLinks": "true", "rapido": "true",
         "showPnx": "true",
     }
-    # Add date range parameters if provided (YYYYMMDD)
-    if dr_s:
-        params["dr_s"] = dr_s
-    if dr_e:
-        params["dr_e"] = dr_e
     r = S.get(url, params=params, timeout=PRIMO_TIMEOUT)
+    _log.info("Primo explore_search URL: %s", r.url)
     if r.status_code >= 400:
         raise requests.HTTPError(f"Explore {r.status_code}: {r.text[:400]}")
     data = r.json()
@@ -90,13 +91,6 @@ def search_with_filters(*, query: str, limit: int, lang_code: Optional[str] = "e
     rtypes = rtypes if rtypes is not None else [None]
     seen, out = set(), []
     for rt in rtypes:
-        q = build_q(
-            query,
-            lang_code=lang_code,
-            peer_reviewed=peer_reviewed,
-            rtype=rt,
-            authors=authors,
-        )
         # Build YYYYMMDD date range (inclusive)
         yf = int(year_from) if year_from is not None else None
         yt = int(year_to) if year_to is not None else None
@@ -104,8 +98,18 @@ def search_with_filters(*, query: str, limit: int, lang_code: Optional[str] = "e
             yf, yt = yt, yf
         drs = f"{yf}0101" if yf is not None else None
         dre = f"{yt}1231" if yt is not None else None
-        _log.info("Primo search q='%s' limit=%s sort=%s dr_s=%s dr_e=%s", q, limit, sort, drs, dre)
-        resp = explore_search(q=q, limit=limit, sort=sort, dr_s=drs, dr_e=dre)
+        
+        q = build_q(
+            query,
+            lang_code=lang_code,
+            peer_reviewed=peer_reviewed,
+            rtype=rt,
+            authors=authors,
+            dr_s=drs,
+            dr_e=dre,
+        )
+        _log.info("Primo search q='%s' limit=%s sort=%s", q, limit, sort)
+        resp = explore_search(q=q, limit=limit, sort=sort)
         docs = resp.get("docs", []) or []
         _log.info("Primo returned %d docs (pre-filter)", len(docs))
         for d in docs:

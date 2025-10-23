@@ -5,12 +5,13 @@ from typing import List, Dict, Any, Optional
 class AgentInput(BaseModel):
     user_input: str
 
-class ArticleBrief(BaseModel):
+class SearchBrief(BaseModel):
     record_id: str
     title: str = ""
     creators: List[str] = []
     creation_date: str = ""
-    resource_type: str = "article"
+    # Optional: resource type hint (e.g., article, book, dissertation, etc.)
+    resource_type: Optional[str] = None
     context: str = "PC"
     permalink: Optional[str] = None
 
@@ -23,5 +24,5 @@ class AgentOutput(BaseModel):
     list_items: List[str] = []
     hits: List[QAHit] = []
     # NEW: allow app to render and export later
-    briefs: List[ArticleBrief] = []
+    briefs: List[SearchBrief] = []
     await_export: bool = False

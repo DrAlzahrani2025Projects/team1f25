@@ -4,14 +4,15 @@ import streamlit as st
 from core.schemas import AgentInput
 from agents.orchestrator_agent import handle
 
-st.set_page_config(page_title="Scholar AI Assistant", page_icon="📚", layout="wide")
+st.set_page_config(page_title="Scholar Article Lister", page_icon="📚", layout="wide")
 
 def main():
-    st.subheader("Scholar AI Assistant")
-    st.caption("Type queries like **List top 10 ott subscriber churn articles**")
+    st.subheader("Scholar Article Lister")
+    st.caption("Type queries like: **List top 10 climate change articles**")
 
+    # Initialize chat with a friendly first-time greeting
     if "chat" not in st.session_state:
-        st.session_state["chat"] = []
+        st.session_state["chat"] = [("assistant", "Hi, how can I help you?")]
 
     # Render history
     for role, content in st.session_state["chat"]:
@@ -27,7 +28,7 @@ def main():
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Single call to orchestrator (it handles list/answer/feed)
+    # Single call to orchestrator (LIST only)
     with st.chat_message("assistant"):
         with st.spinner("Working…"):
             out = handle(AgentInput(user_input=prompt))

@@ -1,4 +1,4 @@
-# core/qroq_client.py
+# core/groq_client.py
 import os
 from typing import Any, Dict, Iterable, List, Optional, Union
 
@@ -19,7 +19,7 @@ def _as_messages(
     return messages
 
 
-class QroqClient:
+class GroqClient:
     """
     Thin wrapper around the Groq Python client with sane defaults and
     convenience helpers for non-streaming and streaming chat completions.

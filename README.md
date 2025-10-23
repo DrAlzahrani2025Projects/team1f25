@@ -94,4 +94,3 @@ Open browser at https://sec.cse.csusb.edu/team1f25/
 We have integrated a Google Colab notebook for easy access and execution.
 
 [Open in Colab](https://colab.research.google.com/drive/1tf7gLr7rv-YE5rZq6R0iJzA3-MUVs38N?usp=sharing)
-
