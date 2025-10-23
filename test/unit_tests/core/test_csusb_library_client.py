@@ -32,6 +32,13 @@ class TestPrimoQueryBuilder(unittest.TestCase):
         # AND separators join parts
         self.assertIn(",AND;", q)
 
+    def test_build_q_with_date_range(self):
+        q = build_q("quantum", lang_code="eng", peer_reviewed=False, rtype="articles", dr_s="20180101", dr_e="20201231")
+        self.assertIn("any,contains,quantum", q)
+        self.assertIn("dr_s,exact,20180101", q)
+        self.assertIn("dr_e,exact,20201231", q)
+        self.assertIn("rtype,exact,articles", q)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

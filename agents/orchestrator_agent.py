@@ -8,7 +8,7 @@ formatted list. No side effects, no vector DB, no LLM calls.
 
 from typing import List
 from core.schemas import AgentInput, AgentOutput, SearchBreif
-from core.utils import extract_top_n, strip_to_search_terms, strip_to_search_type
+from core.utils import extract_top_n, strip_to_search_terms, strip_to_search_type, strip_to_authors, parse_date_range, parse_peer_review_flag
 from agents.retrieval_agent import search
 from core.logging_utils import get_logger
 
@@ -47,11 +47,14 @@ def handle(input: AgentInput) -> AgentOutput:
         topn = extract_top_n(user, 10)
         terms = strip_to_search_terms(user)
         stype = strip_to_search_type(user) or None
+        authors = strip_to_authors(user) or None
+        yfrom, yto = parse_date_range(user, 1900, 2100)
+        pr = parse_peer_review_flag(user)
         if not terms:
             return AgentOutput(text="Please provide search terms, e.g., 'List top 10 machine learning articles'.")
 
-        _log.info("LIST handler: terms='%s' topn=%d type=%s", terms, topn, stype)
-        briefs: List[SearchBreif] = search(terms, n=topn, peer_reviewed=False, sort="rank", search_type=stype)
+        _log.info("LIST handler: terms='%s' topn=%d type=%s authors=%s yfrom=%s yto=%s pr=%s", terms, topn, stype, authors, yfrom, yto, pr)
+        briefs: List[SearchBreif] = search(terms, n=topn, peer_reviewed=pr, sort="rank", search_type=stype, year_from=yfrom, year_to=yto, authors=authors)
         if not briefs:
             return AgentOutput(text=f"No results found for **{terms}**.")
 

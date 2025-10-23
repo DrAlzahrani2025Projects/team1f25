@@ -70,12 +70,10 @@ class TestOrchestratorIntegration(unittest.TestCase):
     def test_type_filter_embedded_in_q(self, mock_explore):
         captured = {}
 
-        def side_effect(*, q=None, limit=10, offset=0, query=None, sort="rank", dr_s=None, dr_e=None):
+        def side_effect(*, q=None, limit=10, offset=0, query=None, sort="rank"):
             captured["q"] = q
             captured["limit"] = limit
             captured["sort"] = sort
-            captured["dr_s"] = dr_s
-            captured["dr_e"] = dr_e
             return {"docs": self._sample_docs()[:1]}  # one doc is enough
 
         mock_explore.side_effect = side_effect
@@ -91,15 +89,38 @@ class TestOrchestratorIntegration(unittest.TestCase):
         self.assertIn("lang,exact,eng", captured.get("q", ""))
 
     @patch("core.csusb_library_client.explore_search")
+    def test_authors_date_peerreview_in_q_and_params(self, mock_explore):
+        captured = {}
+
+        def side_effect(*, q=None, limit=10, offset=0, query=None, sort="rank"):
+            captured["q"], captured["limit"] = q, limit
+            return {"docs": self._sample_docs()[:1]}
+
+        mock_explore.side_effect = side_effect
+
+        input_text = "Show top 3 peer-reviewed articles by Andrew Ng and Yann LeCun between 2018 and 2020"
+        out = orchestrator_agent.handle(AgentInput(user_input=input_text))
+        self.assertTrue(out.text.startswith("Top 1 results for") or out.text.startswith("Top 3 results for"))
+        # creators included via build_q
+        self.assertIn("creator,contains,Andrew Ng", captured.get("q", ""))
+        self.assertIn("creator,contains,Yann LeCun", captured.get("q", ""))
+        # ensure no stray years are included as creators
+        self.assertNotIn("creator,contains,2018", captured.get("q", ""))
+        self.assertNotIn("creator,contains,2020", captured.get("q", ""))
+        # peer reviewed facet
+        self.assertIn("facet_tlevel,exact,peer_reviewed", captured.get("q", ""))
+        # date range now in query clauses instead of URL params
+        self.assertIn("dr_s,exact,20180101", captured.get("q", ""))
+        self.assertIn("dr_e,exact,20201231", captured.get("q", ""))
+
+    @patch("core.csusb_library_client.explore_search")
     def test_book_chapter_type_and_limit_clamp(self, mock_explore):
         captured = {}
 
-        def side_effect(*, q=None, limit=10, offset=0, query=None, sort="rank", dr_s=None, dr_e=None):
+        def side_effect(*, q=None, limit=10, offset=0, query=None, sort="rank"):
             captured["q"] = q
             captured["limit"] = limit
             captured["sort"] = sort
-            captured["dr_s"] = dr_s
-            captured["dr_e"] = dr_e
             return {"docs": self._sample_docs()[:1]}
 
         mock_explore.side_effect = side_effect
