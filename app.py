@@ -10,8 +10,9 @@ def main():
     st.subheader("Scholar Article Lister")
     st.caption("Type queries like: **List top 10 climate change articles**")
 
+    # Initialize chat with a friendly first-time greeting
     if "chat" not in st.session_state:
-        st.session_state["chat"] = []
+        st.session_state["chat"] = [("assistant", "Hi, how can I help you?")]
 
     # Render history
     for role, content in st.session_state["chat"]:
