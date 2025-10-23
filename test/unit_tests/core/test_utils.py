@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
 
 # Ensure project root is on sys.path
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -49,6 +50,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(utils.strip_to_authors("authors: Andrew Ng, Yann LeCun"), ["Andrew Ng", "Yann LeCun"])
         self.assertEqual(utils.strip_to_authors("papers by Jane Doe and John Smith on AI"), ["Jane Doe", "John Smith"])
 
+    @patch.dict(os.environ, {'CURRENT_YEAR_OVERRIDE': '2025'})
     def test_parse_date_range_variants(self):
         y = utils.parse_date_range("since 2019")
         self.assertEqual(y, (2019, 2100))
@@ -60,15 +62,8 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(y, (2011, 2100))
         y = utils.parse_date_range("before 2000")
         self.assertEqual(y, (1900, 1999))
-        # Use CURRENT_YEAR override for deterministic testing
-        os.environ["CURRENT_YEAR_OVERRIDE"] = "2025"
-        from importlib import reload
-        reload(utils)
         y = utils.parse_date_range("last 5 years")
         self.assertEqual(y, (2021, 2025))
-        # Clean override
-        os.environ.pop("CURRENT_YEAR_OVERRIDE", None)
-        reload(utils)
 
     def test_parse_peer_review_flag(self):
         self.assertTrue(utils.parse_peer_review_flag("peer-reviewed articles"))
