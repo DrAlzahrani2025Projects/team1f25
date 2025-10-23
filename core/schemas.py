@@ -10,7 +10,8 @@ class SearchBreif(BaseModel):
     title: str = ""
     creators: List[str] = []
     creation_date: str = ""
-    resource_type: str = "article"
+    # Optional: resource type hint (e.g., article, book, dissertation, etc.)
+    resource_type: Optional[str] = None
     context: str = "PC"
     permalink: Optional[str] = None
 

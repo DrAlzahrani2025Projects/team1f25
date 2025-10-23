@@ -8,7 +8,7 @@ formatted list. No side effects, no vector DB, no LLM calls.
 
 from typing import List
 from core.schemas import AgentInput, AgentOutput, SearchBreif
-from core.utils import extract_top_n, strip_to_search_terms
+from core.utils import extract_top_n, strip_to_search_terms, strip_to_search_type
 from agents.retrieval_agent import search
 from core.logging_utils import get_logger
 
@@ -20,14 +20,18 @@ _log = get_logger(__name__)
 
 
 def _format_list(briefs: List[SearchBreif], terms: str) -> str:
-    lines = []
+    """Render results as a Markdown table with type, title, authors, created date, and link."""
+    header = f"Top {len(briefs)} results for **{terms}**:\n\n"
+    lines = ["| # | Type | Title | Authors | Year | Link |", "|---|------|-------|---------|------|------|"]
     for i, b in enumerate(briefs, 1):
-        creators = ", ".join(b.creators) if b.creators else "—"
+        rtype = b.resource_type or "—"
+        title = b.title or "Untitled"
+        authors = ", ".join(b.creators) if b.creators else "—"
+        year = b.creation_date or ""
         link = b.permalink or ""
-        rtype = (b.resource_type or "").lower()
-        rtype_tag = f"[{rtype}] " if rtype else ""
-        lines.append(f"{i}. {rtype_tag}**{b.title}** ({b.creation_date}) — *{creators}* — {link}")
-    return f"Top {len(briefs)} results for **{terms}**:\n\n" + "\n".join(lines)
+        link_cell = f"[{link}]({link})" if link else ""
+        lines.append(f"| {i} | {rtype} | {title} | {authors} | {year} | {link_cell} |")
+    return header + "\n".join(lines)
 
 # -------------------------
 # Public API (LIST-only)
@@ -42,11 +46,12 @@ def handle(input: AgentInput) -> AgentOutput:
         user = (input.user_input or "").strip()
         topn = extract_top_n(user, 10)
         terms = strip_to_search_terms(user)
+        stype = strip_to_search_type(user) or None
         if not terms:
             return AgentOutput(text="Please provide search terms, e.g., 'List top 10 machine learning articles'.")
 
-        _log.info("LIST handler: terms='%s' topn=%d", terms, topn)
-        briefs: List[SearchBreif] = search(terms, n=topn, peer_reviewed=False, sort="rank")
+        _log.info("LIST handler: terms='%s' topn=%d type=%s", terms, topn, stype)
+        briefs: List[SearchBreif] = search(terms, n=topn, peer_reviewed=False, sort="rank", search_type=stype)
         if not briefs:
             return AgentOutput(text=f"No results found for **{terms}**.")
 
