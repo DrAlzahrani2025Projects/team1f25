@@ -63,13 +63,17 @@ Execute the startup script to begin the setup process.
 ./startup.sh
 ```
 
-### Step 7: Access the App
+### Step 7: Enter Your API Key
+
+When prompted by the script, paste your Groq API key from Team1 Canvas discussion board and press Enter.	
+
+### Step 8: Access the AI Agent
 
 Once the container starts, open your browser and navigate to:
 
 [http://localhost:5001/team1f25](http://localhost:5001/team1f25/)
 
-### Step 8: Clean Up
+### Step 9: Clean Up
 
 When you are finished, run the cleanup script to stop and remove the Docker container and image.
 
@@ -85,3 +89,8 @@ For Streamlit:
 
 Open browser at https://sec.cse.csusb.edu/team1f25/
 
+## Google Colab Notebook  
+
+We have integrated a Google Colab notebook for easy access and execution.	
+
+[Open in Colab](https://colab.research.google.com/drive/1tf7gLr7rv-YE5rZq6R0iJzA3-MUVs38N?usp=sharing)
