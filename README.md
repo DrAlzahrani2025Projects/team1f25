@@ -65,7 +65,7 @@ Execute the startup script to begin the setup process.
 
 ### Step 7: Enter Your API Key
 
-When prompted by the script, paste your Groq API key from Team1 Canvas discussion board and press Enter.	
+When prompted by the script, paste your Groq API key from Team1 Canvas discussion board and press Enter.
 
 ### Step 8: Access the AI Agent
 
@@ -91,6 +91,6 @@ Open browser at https://sec.cse.csusb.edu/team1f25/
 
 ## Google Colab Notebook  
 
-We have integrated a Google Colab notebook for easy access and execution.	
+We have integrated a Google Colab notebook for easy access and execution.
 
 [Open in Colab](https://colab.research.google.com/drive/1tf7gLr7rv-YE5rZq6R0iJzA3-MUVs38N?usp=sharing)
