@@ -25,17 +25,12 @@ _data/
 *.log
 logs/
 
-# Documentation and README files
+# Documentation files
 docs/
-README.md
 *.md
 !requirements.txt
 
-# Test files (exclude from production)
-tests/
-run_tests.py
-run_pytest.py
-pytest.ini
+# Test artifacts and coverage (not source tests)
 .pytest_cache/
 htmlcov/
 .coverage
@@ -50,15 +45,11 @@ coverage.xml
 Thumbs.db
 
 # Docker files (not needed inside container)
-Dockerfile
-Dockerfile.*
 docker-compose.yml
-.dockerignore
 
 # Scripts
 cleanup.sh
 startup.sh
-*.sh
 
 # Temporary and backup files
 *.tmp
