@@ -59,7 +59,7 @@ def main():
             st.markdown(initial_message)
     
     # Handle chat input
-    if prompt := st.chat_input("Type your message here..."):
+    if prompt := st.chat_input("Enter your research query..."):
         handle_user_message(prompt, groq_client)
 
 

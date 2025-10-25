@@ -34,7 +34,7 @@ def render_sidebar():
         new_search = st.button("🔄 Start New Search")
         
         st.divider()
-        st.caption("Powered by Groq AI & CSUSB Library")
+        st.caption("🔬 Powered by Groq AI & CSUSB Library")
         
         return new_search
 
