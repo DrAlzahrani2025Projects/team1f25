@@ -1,15 +1,67 @@
+# Git and version control
 .git
+.gitignore
+.gitattributes
+
+# Python cache and compiled files
 **/__pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.log
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+
+# Environment and secrets
 .env
 .env.*
+*.key
+
+# Data and logs
 data/
 _data/
-tests/
+*.log
+logs/
+
+# Documentation and README files
 docs/
 README.md
+*.md
+!requirements.txt
+
+# Test files (exclude from production)
+tests/
+run_tests.py
+run_pytest.py
+pytest.ini
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Development and CI/CD files
+.github/
+.vscode/
+.idea/
 *.ipynb
 .DS_Store
+Thumbs.db
+
+# Docker files (not needed inside container)
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+.dockerignore
+
+# Scripts
+cleanup.sh
+startup.sh
+*.sh
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
+*~
