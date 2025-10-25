@@ -49,45 +49,81 @@ DO NOT ask too many questions. If the user has stated a clear topic, respond wit
         return "What research topic would you like to explore today?"
 
 
-def extract_search_query(groq_client: GroqClient, conversation_history: List[Dict]) -> str:
-    """Extract and format a search query from conversation history."""
+def extract_search_parameters(groq_client: GroqClient, conversation_history: List[Dict]) -> Dict[str, any]:
+    """Extract search query, number of results, and resource type from conversation."""
     # Get the conversation text
     conversation_text = "\n".join([
         f"{msg['role']}: {msg['content']}" 
         for msg in conversation_history
     ])
     
-    prompt = f"""Based on the following conversation with a user looking for academic resources, extract the key search terms and create a precise search query for a library database.
+    prompt = f"""Based on the following conversation, extract the search parameters in JSON format.
 
 Conversation:
 {conversation_text}
 
-Generate a search query that:
-1. Includes the main topic and keywords mentioned by the user
-2. Keep it simple - avoid complex Boolean operators unless specifically requested
-3. Use natural language that works well with academic search
-4. Focuses on the actual research topic, not procedural questions
+Extract:
+1. "query": The main search terms (simple, no Boolean operators)
+2. "limit": Number of results requested (default: 10 if not specified)
+3. "resource_type": Type of resource to search for
+
+Resource types:
+- "article" - for scholarly/journal articles (when user says "articles" or "journal articles")
+- "book" - for books or ebooks
+- "journal" - for journal publications (when user says "journals" as the publication, NOT "journal articles")
+- "thesis" - for dissertations and theses
+- null - if not specified
+
+IMPORTANT: 
+- "journal articles" = "article" (articles published IN journals)
+- "journals" = "journal" (the journal publication itself)
 
 Examples:
-- If user wants "machine learning in healthcare", return: machine learning healthcare
-- If user wants "climate change articles from 2020", return: climate change
-- If user wants "artificial intelligence OR neural networks", return: artificial intelligence neural networks
-- If user wants "diabetes treatment", return: diabetes treatment
 
-IMPORTANT: Keep the query simple and natural. Avoid AND/OR operators unless the user specifically requested them.
+User: "I need 5 articles about machine learning in healthcare"
+{{"query": "machine learning healthcare", "limit": 5, "resource_type": "article"}}
 
-Respond with ONLY the search query, nothing else. Do not include quotes or explanations."""
+User: "Find 10 books on climate change"
+{{"query": "climate change", "limit": 10, "resource_type": "book"}}
+
+User: "Show me research on diabetes"
+{{"query": "diabetes", "limit": 10, "resource_type": null}}
+
+User: "I want 3 journal articles about AI"
+{{"query": "artificial intelligence", "limit": 3, "resource_type": "article"}}
+
+User: "I need 5 journals about machine learning in healthcare"
+{{"query": "machine learning healthcare", "limit": 5, "resource_type": "journal"}}
+
+User: "Get me 7 scholarly articles on robotics"
+{{"query": "robotics", "limit": 7, "resource_type": "article"}}
+
+Respond with ONLY valid JSON, nothing else."""
 
     try:
-        query = groq_client.chat(prompt)
-        return query.strip()
+        response = groq_client.chat(prompt)
+        # Parse JSON response
+        import json
+        params = json.loads(response)
+        logger.info(f"Extracted parameters: {params}")
+        return params
     except Exception as e:
-        logger.error(f"Error extracting search query: {e}")
-        # Fallback: extract from last user message
+        logger.error(f"Error extracting search parameters: {e}")
+        # Fallback to simple extraction
         user_messages = [msg["content"] for msg in conversation_history if msg["role"] == "user"]
-        if user_messages:
-            return user_messages[-1]
-        return "research"
+        last_message = user_messages[-1] if user_messages else "research"
+        
+        return {
+            "query": last_message,
+            "limit": 10,
+            "resource_type": None
+        }
+
+
+def extract_search_query(groq_client: GroqClient, conversation_history: List[Dict]) -> str:
+    """Extract and format a search query from conversation history."""
+    params = extract_search_parameters(groq_client, conversation_history)
+    return params.get("query", "research")
 
 
 def check_user_wants_search(user_input: str) -> bool:

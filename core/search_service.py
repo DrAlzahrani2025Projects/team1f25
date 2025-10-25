@@ -9,18 +9,24 @@ from core.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
-def perform_library_search(query: str, limit: int = 20) -> Optional[Dict[str, Any]]:
+def perform_library_search(
+    query: str, 
+    limit: int = 20, 
+    resource_type: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
     """Perform search using the CSUSB library client."""
     try:
-        logger.info(f"Performing library search with query: {query}")
-        results = explore_search(q=query, limit=limit, offset=0)
+        logger.info(f"Performing library search with query: {query}, limit: {limit}, type: {resource_type}")
+        
+        # Pass resource_type to API for filtering at the source
+        results = explore_search(q=query, limit=limit, offset=0, resource_type=resource_type)
         
         # Debug logging
         if results:
             doc_count = len(results.get("docs", []))
             total_results = results.get("info", {}).get("total", 0)
             logger.info(f"API returned {doc_count} docs, total available: {total_results}")
-            logger.debug(f"Full API response keys: {results.keys()}")
+            logger.info(f"Returning {len(results.get('docs', []))} results to user")
         else:
             logger.warning("API returned None or empty results")
             
@@ -28,6 +34,30 @@ def perform_library_search(query: str, limit: int = 20) -> Optional[Dict[str, An
     except Exception as e:
         logger.error(f"Library search error: {e}")
         return None
+
+
+def filter_by_resource_type(docs: list, resource_type: str) -> list:
+    """Filter documents by resource type."""
+    resource_type_lower = resource_type.lower()
+    
+    # Map common terms to what Primo actually uses
+    type_mappings = {
+        "article": ["article", "journal article", "review"],
+        "book": ["book", "ebook", "electronic book"],
+        "journal": ["journal", "periodical"],
+        "thesis": ["thesis", "dissertation"],
+    }
+    
+    # Get acceptable types for this resource type
+    acceptable_types = type_mappings.get(resource_type_lower, [resource_type_lower])
+    
+    filtered = []
+    for doc in docs:
+        doc_type = parse_article_data(doc).get("type", "").lower()
+        if any(acceptable in doc_type for acceptable in acceptable_types):
+            filtered.append(doc)
+    
+    return filtered
 
 
 def parse_article_data(doc: Dict[str, Any]) -> Dict[str, str]:

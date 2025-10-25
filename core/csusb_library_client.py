@@ -34,6 +34,7 @@ def explore_search(
     *,
     query: str | None = None,
     sort: str = "rank",
+    resource_type: str | None = None,
 ) -> Dict[str, Any]:
     if (not q) and query:
         q = query
@@ -53,6 +54,20 @@ def explore_search(
         "skipDelivery": "Y", "rtaLinks": "true", "rapido": "true",
         "showPnx": "true",
     }
+    
+    # Add resource type facet filter if specified
+    if resource_type:
+        # Map common terms to Primo facet values
+        type_facets = {
+            "article": "articles",
+            "book": "books", 
+            "journal": "journals",
+            "thesis": "dissertations",
+        }
+        facet_value = type_facets.get(resource_type.lower(), resource_type.lower())
+        params["qInclude"] = f"facet_rtype,exact,{facet_value}"
+        _log.info(f"Adding resource type filter: {params['qInclude']}")
+    
     r = S.get(url, params=params, timeout=PRIMO_TIMEOUT)
     _log.info("Primo explore_search URL: %s", r.url)
     if r.status_code >= 400:

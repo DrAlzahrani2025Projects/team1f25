@@ -49,12 +49,20 @@ def render_chat_messages():
 def display_results_table(results: Dict[str, Any]):
     """Display search results in a formatted table."""
     docs = results.get("docs", [])
+    total_available = results.get("info", {}).get("total", 0)
     
     if not docs:
         st.warning("No results found. Try adjusting your search criteria.")
         return
     
-    st.success(f"Found {len(docs)} articles")
+    # Show info message if fewer results than expected
+    if total_available > 0:
+        if len(docs) < total_available and len(docs) < 10:
+            st.info(f"Found {len(docs)} result(s) out of {total_available} available in the database.")
+        else:
+            st.success(f"Found {len(docs)} result(s)")
+    else:
+        st.success(f"Found {len(docs)} result(s)")
     
     # Prepare data for table
     table_data = []

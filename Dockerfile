@@ -9,7 +9,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
-COPY agents/ agents/
 COPY core/ core/
 
 RUN useradd -m appuser && mkdir -p /data && chown -R appuser:appuser /data /app
