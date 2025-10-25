@@ -1,0 +1,199 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, fresh-start, develop ]
+  pull_request:
+    branches: [ main, fresh-start ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  # Job 1: Unit Tests (fast, no API key needed)
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-mock pytest-cov
+      
+      - name: Run unit tests
+        run: |
+          python run_pytest.py unit
+      
+      - name: Generate coverage report
+        run: |
+          python -m pytest tests/unit --cov=core --cov-report=xml --cov-report=term
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-unit
+
+  # Job 2: Integration Tests (requires API key)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-tests  # Run only if unit tests pass
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-mock
+      
+      - name: Run integration tests
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          python run_pytest.py integration
+        continue-on-error: true  # Don't fail build if API is down
+
+  # Job 3: Docker Build Test
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build production image
+        run: |
+          docker build -t team1f25-app:test .
+      
+      - name: Build test image
+        run: |
+          docker build -f Dockerfile.test -t team1f25-tests:test .
+      
+      - name: Run tests in container
+        run: |
+          docker run --rm team1f25-tests:test python run_pytest.py unit
+      
+      - name: Test production container starts
+        run: |
+          docker run -d --name test-app -p 5001:5001 -e GROQ_API_KEY="test" team1f25-app:test
+          sleep 5
+          docker logs test-app
+          docker stop test-app
+          docker rm test-app
+
+  # Job 4: Code Quality Checks
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Install linting tools
+        run: |
+          pip install flake8 black isort mypy
+      
+      - name: Check code formatting with Black
+        run: |
+          black --check --diff core/ ui/ tests/
+        continue-on-error: true
+      
+      - name: Check imports with isort
+        run: |
+          isort --check-only --diff core/ ui/ tests/
+        continue-on-error: true
+      
+      - name: Lint with flake8
+        run: |
+          flake8 core/ ui/ tests/ --max-line-length=120 --extend-ignore=E203,W503
+        continue-on-error: true
+      
+      - name: Type check with mypy
+        run: |
+          mypy core/ ui/ --ignore-missing-imports
+        continue-on-error: true
+
+  # Job 5: Security Scan
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Install security tools
+        run: |
+          pip install safety bandit
+      
+      - name: Check dependencies for vulnerabilities
+        run: |
+          pip install -r requirements.txt
+          safety check --json
+        continue-on-error: true
+      
+      - name: Run Bandit security scan
+        run: |
+          bandit -r core/ ui/ -f json
+        continue-on-error: true
+
+  # Job 6: Notification
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, docker-build]
+    if: always()
+    
+    steps:
+      - name: Check job results
+        run: |
+          echo "Unit Tests: ${{ needs.unit-tests.result }}"
+          echo "Integration Tests: ${{ needs.integration-tests.result }}"
+          echo "Docker Build: ${{ needs.docker-build.result }}"
+      
+      - name: Send success notification
+        if: needs.unit-tests.result == 'success' && needs.docker-build.result == 'success'
+        run: |
+          echo "✅ All checks passed!"
+      
+      - name: Send failure notification
+        if: needs.unit-tests.result == 'failure' || needs.docker-build.result == 'failure'
+        run: |
+          echo "❌ Some checks failed!"
