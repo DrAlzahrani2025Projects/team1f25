@@ -1,6 +1,7 @@
 # core/groq_client.py
 import os
 from typing import Any, Dict, Iterable, List, Optional, Union
+from core.interfaces import ILLMClient
 
 def _as_messages(
     content: Union[str, List[Dict[str, str]]],
@@ -19,10 +20,11 @@ def _as_messages(
     return messages
 
 
-class GroqClient:
+class GroqClient(ILLMClient):
     """
     Thin wrapper around the Groq Python client with sane defaults and
     convenience helpers for non-streaming and streaming chat completions.
+    Implements ILLMClient interface for dependency inversion.
     """
 
     def __init__(

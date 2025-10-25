@@ -5,6 +5,8 @@ Scholar AI Assistant - Main Application Entry Point
 A conversational AI chatbot that helps users discover academic resources
 from the CSUSB library by understanding their research needs and presenting
 results in an organized table format.
+
+Refactored to follow SOLID principles (SRP, DIP, OCP) and KISS principle.
 """
 import streamlit as st
 from ui.session_state import initialize_session_state, reset_session_state
@@ -24,43 +26,75 @@ st.set_page_config(
 )
 
 
+class ScholarAIApp:
+    """
+    Main application class following SRP.
+    Responsible only for application orchestration.
+    """
+    
+    def __init__(self):
+        """Initialize the application."""
+        self.groq_client = None
+    
+    def setup(self) -> bool:
+        """
+        Setup application dependencies.
+        Returns True if setup successful, False otherwise.
+        """
+        initialize_session_state()
+        self.groq_client = initialize_groq_client()
+        
+        if not self.groq_client:
+            st.warning("⚠️ Please set your GROQ_API_KEY environment variable to use this chatbot.")
+            return False
+        
+        return True
+    
+    def render_header(self):
+        """Render the application header."""
+        st.title("📚 Scholar AI Assistant")
+        st.markdown("*Your intelligent research companion for discovering academic resources*")
+    
+    def handle_sidebar_actions(self):
+        """Handle sidebar interactions."""
+        if render_sidebar():
+            reset_session_state()
+            st.rerun()
+    
+    def display_initial_greeting(self):
+        """Display initial greeting if no messages exist."""
+        if len(st.session_state.messages) == 0:
+            initial_message = get_initial_greeting()
+            st.session_state.messages.append({"role": "assistant", "content": initial_message})
+            with st.chat_message("assistant"):
+                st.markdown(initial_message)
+    
+    def handle_chat_input(self):
+        """Handle user chat input."""
+        if prompt := st.chat_input("Enter your research query..."):
+            handle_user_message(prompt, self.groq_client)
+    
+    def run(self):
+        """Run the main application loop."""
+        # Setup
+        if not self.setup():
+            return
+        
+        # Render UI
+        self.render_header()
+        self.handle_sidebar_actions()
+        render_chat_messages()
+        display_search_results_section()
+        self.display_initial_greeting()
+        
+        # Handle input
+        self.handle_chat_input()
+
+
 def main():
-    """Main application function."""
-    # Initialize session state
-    initialize_session_state()
-    
-    # Render page header
-    st.title("📚 Scholar AI Assistant")
-    st.markdown("*Your intelligent research companion for discovering academic resources*")
-    
-    # Initialize Groq client
-    groq_client = initialize_groq_client()
-    
-    if not groq_client:
-        st.warning("⚠️ Please set your GROQ_API_KEY environment variable to use this chatbot.")
-        return
-    
-    # Render sidebar and check for new search request
-    if render_sidebar():
-        reset_session_state()
-        st.rerun()
-    
-    # Display chat messages
-    render_chat_messages()
-    
-    # Display search results if available
-    display_search_results_section()
-    
-    # Display initial greeting if no messages
-    if len(st.session_state.messages) == 0:
-        initial_message = get_initial_greeting()
-        st.session_state.messages.append({"role": "assistant", "content": initial_message})
-        with st.chat_message("assistant"):
-            st.markdown(initial_message)
-    
-    # Handle chat input
-    if prompt := st.chat_input("Enter your research query..."):
-        handle_user_message(prompt, groq_client)
+    """Application entry point - Keep it simple (KISS)."""
+    app = ScholarAIApp()
+    app.run()
 
 
 if __name__ == "__main__":

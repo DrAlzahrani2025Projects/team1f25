@@ -1,10 +1,11 @@
 # ui/components.py
 """
 UI components for the Streamlit application.
+Refactored to follow SRP - each function has a single, clear purpose.
 """
 import streamlit as st
 from typing import Dict, Any
-from core.search_service import parse_article_data
+from core.result_formatter import ResultFormatter
 
 
 def render_sidebar():
@@ -47,7 +48,7 @@ def render_chat_messages():
 
 
 def display_results_table(results: Dict[str, Any]):
-    """Display search results in a formatted table."""
+    """Display search results in a formatted table using ResultFormatter."""
     docs = results.get("docs", [])
     total_available = results.get("info", {}).get("total", 0)
     
@@ -55,33 +56,13 @@ def display_results_table(results: Dict[str, Any]):
         st.warning("No results found. Try adjusting your search criteria.")
         return
     
-    # Show info message if fewer results than expected
-    if total_available > 0:
-        if len(docs) < total_available and len(docs) < 10:
-            st.info(f"Found {len(docs)} result(s) out of {total_available} available in the database.")
-        else:
-            st.success(f"Found {len(docs)} result(s)")
-    else:
-        st.success(f"Found {len(docs)} result(s)")
+    # Show info about results
+    _display_result_count(len(docs), total_available)
     
-    # Prepare data for table with clickable links
-    table_data = []
-    for idx, doc in enumerate(docs, 1):
-        article = parse_article_data(doc)
-        
-        # Get the link URL
-        link = article.get("link", "")
-        
-        table_data.append({
-            "#": idx,
-            "Title": article["title"][:80] + "..." if len(article["title"]) > 80 else article["title"],
-            "Authors": article["author"][:40] + "..." if len(article["author"]) > 40 else article["author"],
-            "Year": article["date"],
-            "Type": article["type"],
-            "Link": link if link else None
-        })
+    # Format data for table using ResultFormatter
+    table_data = ResultFormatter.format_table_data(docs)
     
-    # Display as dataframe
+    # Display as dataframe with proper configuration
     st.dataframe(
         table_data,
         width='stretch',
@@ -100,6 +81,17 @@ def display_results_table(results: Dict[str, Any]):
             )
         }
     )
+
+
+def _display_result_count(found: int, total: int):
+    """Display information about result count."""
+    if total > 0:
+        if found < total and found < 10:
+            st.info(f"Found {found} result(s) out of {total} available in the database.")
+        else:
+            st.success(f"Found {found} result(s)")
+    else:
+        st.success(f"Found {found} result(s)")
 
 
 def display_search_results_section():

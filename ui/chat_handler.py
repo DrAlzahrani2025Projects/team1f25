@@ -1,11 +1,14 @@
 # ui/chat_handler.py
 """
 Chat interaction handler for the Streamlit application.
+Refactored to follow SOLID principles (SRP, DIP, KISS).
 """
 import streamlit as st
 from typing import Optional
 from core.groq_client import GroqClient
-from core.ai_assistant import generate_follow_up_question, extract_search_parameters, check_user_wants_search
+from core.conversation_analyzer import ConversationAnalyzer
+from core.suggestion_service import SuggestionService
+from core.prompts import PromptManager
 from core.search_service import perform_library_search
 from core.logging_utils import get_logger
 
@@ -22,112 +25,147 @@ def initialize_groq_client() -> Optional[GroqClient]:
         return None
 
 
-def suggest_alternative_search(groq_client: GroqClient, original_query: str) -> str:
-    """Use AI to suggest alternative search terms when no results found."""
-    prompt = f"""The user searched for "{original_query}" in an academic library database but got 0 results.
-
-Suggest 2-3 alternative, broader search terms that might work better. Keep suggestions short and relevant.
-
-Format your response as a simple list:
-- suggestion 1
-- suggestion 2
-- suggestion 3
-
-Example:
-If user searched: "ott churn causes"
-Suggest:
-- customer churn
-- subscriber retention
-- streaming service analytics"""
-
-    try:
-        suggestions = groq_client.chat(prompt)
-        return suggestions.strip()
-    except Exception as e:
-        logger.error(f"Error generating suggestions: {e}")
-        return "- Try using broader search terms\n- Check spelling and try synonyms"
-
-
-def handle_search_execution(groq_client: GroqClient, conversation_history: list):
-    """Execute a library search and handle the results."""
-    # Extract search parameters (query, limit, resource_type)
-    params = extract_search_parameters(groq_client, conversation_history)
-    search_query = params.get("query", "research")
-    limit = params.get("limit", 10)
-    resource_type = params.get("resource_type")
+class ChatOrchestrator:
+    """
+    Orchestrates chat interactions by delegating to specialized services.
+    Follows SRP - coordinates but doesn't implement business logic.
+    """
     
-    logger.info(f"Extracted parameters - query: {search_query}, limit: {limit}, type: {resource_type}")
+    def __init__(self, llm_client: GroqClient):
+        """Initialize with dependencies."""
+        self.llm_client = llm_client
+        self.prompt_manager = PromptManager()
+        self.analyzer = ConversationAnalyzer(llm_client, self.prompt_manager)
+        self.suggestion_service = SuggestionService(llm_client, self.prompt_manager)
     
-    # Build response text
-    response_parts = [f"Great! Let me search for"]
-    if limit:
-        response_parts.append(f"**{limit}**")
-    if resource_type:
-        response_parts.append(f"**{resource_type}s**" if limit != 1 else f"**{resource_type}**")
-    else:
-        response_parts.append("resources")
-    response_parts.append(f"on: **{search_query}**")
-    
-    response_text = " ".join(response_parts) + "\n\nSearching the library database..."
-    st.markdown(response_text)
-    st.session_state.messages.append({"role": "assistant", "content": response_text})
-    
-    # Perform search with parameters
-    with st.spinner("Searching library database..."):
-        results = perform_library_search(search_query, limit=limit, resource_type=resource_type)
+    def should_search(self, user_input: str, conversation_history: list) -> bool:
+        """Determine if a search should be triggered."""
+        # Check explicit user request
+        if self.analyzer.should_trigger_search(user_input):
+            logger.info("User explicitly requested search")
+            return True
         
-    # Handle results
-    if results is None:
-        # Actual error occurred (API failure, network issue, etc.)
+        # Check AI readiness
+        ai_response = self.analyzer.get_follow_up_response(conversation_history)
+        return "READY_TO_SEARCH" in ai_response
+    
+    def get_conversation_response(self, conversation_history: list) -> str:
+        """Get AI response for continuing conversation."""
+        return self.analyzer.get_follow_up_response(conversation_history)
+    
+    def execute_search(self, conversation_history: list):
+        """Execute search and handle results."""
+        # Extract parameters
+        params = self.analyzer.extract_search_parameters(conversation_history)
+        search_query = params.get("query", "research")
+        limit = params.get("limit", 10)
+        resource_type = params.get("resource_type")
+        
+        logger.info(f"Search params - query: {search_query}, limit: {limit}, type: {resource_type}")
+        
+        # Show search message
+        self._display_search_message(search_query, limit, resource_type)
+        
+        # Perform search
+        with st.spinner("Searching library database..."):
+            results = perform_library_search(search_query, limit=limit, resource_type=resource_type)
+        
+        # Handle results
+        self._handle_search_results(results, search_query, resource_type)
+    
+    def _display_search_message(self, query: str, limit: int, resource_type: Optional[str]):
+        """Display search initiation message."""
+        parts = ["Great! Let me search for"]
+        
+        if limit:
+            parts.append(f"**{limit}**")
+        
+        if resource_type:
+            type_text = f"**{resource_type}s**" if limit != 1 else f"**{resource_type}**"
+            parts.append(type_text)
+        else:
+            parts.append("resources")
+        
+        parts.append(f"on: **{query}**")
+        
+        message = " ".join(parts) + "\n\nSearching the library database..."
+        st.markdown(message)
+        st.session_state.messages.append({"role": "assistant", "content": message})
+    
+    def _handle_search_results(self, results, query: str, resource_type: Optional[str]):
+        """Handle search results - success, no results, or error."""
+        if results is None:
+            # API error
+            self._handle_search_error()
+        elif len(results.get("docs", [])) == 0:
+            # No results found
+            self._handle_no_results(query, resource_type)
+        else:
+            # Success
+            st.session_state.search_results = results
+            st.rerun()
+    
+    def _handle_search_error(self):
+        """Handle search API errors."""
         error_msg = "I encountered an issue searching the library. Please try again or refine your search."
         st.error(error_msg)
         st.session_state.messages.append({"role": "assistant", "content": error_msg})
-    elif len(results.get("docs", [])) == 0:
-        # Search succeeded but no results found
-        # Get AI suggestions for alternative searches
-        suggestions = suggest_alternative_search(groq_client, search_query)
+    
+    def _handle_no_results(self, query: str, resource_type: Optional[str]):
+        """Handle when no results are found."""
+        suggestions = self.suggestion_service.generate_suggestions(query)
         
-        no_results_msg = f"I searched the library but couldn't find any results for **'{search_query}'**"
+        message = f"I searched the library but couldn't find any results for **'{query}'**"
         if resource_type:
-            no_results_msg += f" (filtering by {resource_type}s)"
-        no_results_msg += ".\n\n**Try these alternative searches:**\n"
-        no_results_msg += suggestions
+            message += f" (filtering by {resource_type}s)"
+        message += ".\n\n**Try these alternative searches:**\n"
+        message += suggestions
         
         st.warning("No results found")
-        st.markdown(no_results_msg)
-        st.session_state.messages.append({"role": "assistant", "content": no_results_msg})
-    else:
-        # Success - results found
-        st.session_state.search_results = results
-        st.rerun()
+        st.markdown(message)
+        st.session_state.messages.append({"role": "assistant", "content": message})
 
 
 def handle_user_message(prompt: str, groq_client: GroqClient):
-    """Handle user message and generate appropriate response."""
+    """
+    Handle user message and generate appropriate response.
+    Simplified to delegate to ChatOrchestrator.
+    """
     # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
     
-    # Generate response
+    # Create orchestrator
+    orchestrator = ChatOrchestrator(groq_client)
+    
+    # Process message
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             conversation_history = st.session_state.messages.copy()
             
-            # Check if user explicitly wants to search now
-            if check_user_wants_search(prompt):
-                logger.info("User explicitly requested search")
-                handle_search_execution(groq_client, conversation_history)
+            # Check if should search
+            if orchestrator.analyzer.should_trigger_search(prompt):
+                orchestrator.execute_search(conversation_history)
                 return
             
             # Get AI response
-            ai_response = generate_follow_up_question(groq_client, conversation_history)
+            ai_response = orchestrator.get_conversation_response(conversation_history)
             logger.info(f"AI response: {ai_response}")
             
-            # Check if AI is ready to search
+            # Check if ready to search
             if "READY_TO_SEARCH" in ai_response:
-                handle_search_execution(groq_client, conversation_history)
+                orchestrator.execute_search(conversation_history)
             else:
                 # Continue conversation
                 st.markdown(ai_response)
                 st.session_state.messages.append({"role": "assistant", "content": ai_response})
+
+
+# Legacy function kept for backward compatibility
+def suggest_alternative_search(groq_client: GroqClient, original_query: str) -> str:
+    """Legacy function - delegates to SuggestionService."""
+    prompt_manager = PromptManager()
+    service = SuggestionService(groq_client, prompt_manager)
+    return service.generate_suggestions(original_query)
+
