@@ -4,10 +4,13 @@ on:
   pull_request:
     branches: 
       - main
+      - \*-dev
+      - fresh-start # will be removed later
   push:
     branches:
       - main
-
+      - \*-dev
+      - fresh-start # will be removed later
 jobs:
   # Job 1: Unit Tests (fast, no API key needed)
   unit-tests:
