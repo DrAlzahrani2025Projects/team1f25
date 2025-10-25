@@ -89,10 +89,24 @@ def parse_article_data(doc: Dict[str, Any]) -> Dict[str, str]:
     else:
         link = ""
     
+    # Get date with fallback
+    date = first_or_default(display, "creationdate")
+    if not date or date == "N/A":
+        date = first_or_default(addata, "date")
+    
+    # Extract only year (YYYY format)
+    year = "N/A"
+    if date and date != "N/A":
+        # Extract 4-digit year from date string
+        import re
+        year_match = re.search(r'\b(19|20)\d{2}\b', date)
+        if year_match:
+            year = year_match.group(0)
+    
     return {
         "title": first_or_default(display, "title"),
         "author": first_or_default(display, "creator"),
-        "date": first_or_default(display, "creationdate"),
+        "date": year,
         "type": first_or_default(display, "type"),
         "source": first_or_default(display, "source"),
         "publisher": first_or_default(addata, "pub"),
