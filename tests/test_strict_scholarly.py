@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.groq_client import GroqClient
+from core.clients.groq_client import GroqClient
 from core.ai_assistant import generate_follow_up_question
 
 client = GroqClient()
@@ -72,3 +72,4 @@ for i, test in enumerate(test_cases, 1):
     print("-" * 80)
 
 print("\n✅ Strict scholarly assistant test complete!")
+

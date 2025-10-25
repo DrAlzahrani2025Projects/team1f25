@@ -5,12 +5,12 @@ Refactored to follow SOLID principles (SRP, DIP, KISS).
 """
 import streamlit as st
 from typing import Optional
-from core.groq_client import GroqClient
-from core.conversation_analyzer import ConversationAnalyzer
-from core.suggestion_service import SuggestionService
-from core.prompts import PromptManager
-from core.search_service import perform_library_search
-from core.logging_utils import get_logger
+from core.clients.groq_client import GroqClient
+from core.services.conversation_analyzer import ConversationAnalyzer
+from core.services.suggestion_service import SuggestionService
+from core.utils.prompts import PromptManager
+from core.services.search_service import perform_library_search
+from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

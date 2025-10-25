@@ -1,4 +1,4 @@
-# core/groq_client.py
+# core/clients/groq_client.py
 import os
 from typing import Any, Dict, Iterable, List, Optional, Union
 from core.interfaces import ILLMClient

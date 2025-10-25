@@ -5,7 +5,7 @@ Follows SRP - Single Responsibility: Analyze user conversations.
 import json
 from typing import Dict, List, Optional
 from core.interfaces import ILLMClient, IPromptProvider
-from core.logging_utils import get_logger
+from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

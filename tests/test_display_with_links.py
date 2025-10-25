@@ -4,8 +4,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.csusb_library_client import explore_search
-from core.search_service import parse_article_data
+from core.clients.csusb_library_client import explore_search
+from core.services.search_service import parse_article_data
 
 print("=== Testing Updated Results Display ===\n")
 
@@ -29,3 +29,4 @@ for i, doc in enumerate(docs, 1):
 print("-" * 80)
 print("\n✅ Link extraction working!")
 print("✅ All required columns available: #, Title, Authors, Year, Type, Link")
+

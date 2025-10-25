@@ -1,4 +1,4 @@
-# core/csusb_library_client.py
+# core/clients/csusb_library_client.py
 import json
 import os
 from typing import Any, Dict, List, Optional
@@ -6,7 +6,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from core.interfaces import ILibraryClient
-from core.logging_utils import get_logger
+from core.utils.logging_utils import get_logger
 
 PRIMO_PUBLIC_BASE = os.getenv("PRIMO_PUBLIC_BASE", "https://csu-sb.primo.exlibrisgroup.com/primaws/rest/pub")
 PRIMO_VID   = os.getenv("PRIMO_VID",   "01CALS_USB:01CALS_USB")

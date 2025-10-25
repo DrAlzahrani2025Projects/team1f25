@@ -6,9 +6,9 @@ Refactored to follow SOLID principles (SRP, DIP).
 """
 from typing import List, Dict
 from core.interfaces import ILLMClient, IPromptProvider
-from core.conversation_analyzer import ConversationAnalyzer
-from core.prompts import PromptManager
-from core.logging_utils import get_logger
+from core.services.conversation_analyzer import ConversationAnalyzer
+from core.utils.prompts import PromptManager
+from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

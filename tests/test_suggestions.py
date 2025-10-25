@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.groq_client import GroqClient
+from core.clients.groq_client import GroqClient
 
 def suggest_alternative_search(groq_client: GroqClient, original_query: str) -> str:
     """Use AI to suggest alternative search terms when no results found."""
@@ -46,3 +46,4 @@ for query in test_queries:
     suggestions = suggest_alternative_search(client, query)
     print(suggestions)
     print("\n" + "="*80 + "\n")
+

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.csusb_library_client import explore_search
+from core.clients.csusb_library_client import explore_search
 
 # Test the search
 query = "machine learning healthcare"
@@ -26,3 +26,4 @@ if docs_count > 0:
 else:
     print("\n❌ No results found")
     print(f"Response keys: {results.keys()}")
+

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.groq_client import GroqClient
+from core.clients.groq_client import GroqClient
 from core.ai_assistant import generate_follow_up_question
 
 client = GroqClient()
@@ -78,3 +78,4 @@ if "READY_TO_SEARCH" not in response1:
 
 print("\n" + "=" * 60)
 print("\n✅ Conversation flow test complete!")
+

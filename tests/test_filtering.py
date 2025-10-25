@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.search_service import perform_library_search
+from core.services.search_service import perform_library_search
 
 print("Test 1: 5 articles about machine learning healthcare")
 results = perform_library_search("machine learning healthcare", limit=5, resource_type="article")
@@ -33,3 +33,4 @@ if results:
         print(f"  {i}. [{doc_type}] {title[:60]}...")
 else:
     print("  No results")
+

@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.csusb_library_client import explore_search
+from core.clients.csusb_library_client import explore_search
 
 print("Test 1: Search for articles")
 results = explore_search("machine learning healthcare", limit=5, resource_type="article")
@@ -38,3 +38,4 @@ for i, doc in enumerate(docs, 1):
     title = display.get("title", ["No title"])[0] if display.get("title") else "No title"
     doc_type = display.get("type", ["Unknown"])[0] if display.get("type") else "Unknown"
     print(f"  {i}. [{doc_type}] {title[:60]}...")
+

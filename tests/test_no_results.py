@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.search_service import perform_library_search
+from core.services.search_service import perform_library_search
 
 print("Test 1: Original query that failed")
 results = perform_library_search("ott churn causes", limit=10, resource_type=None)
@@ -44,3 +44,4 @@ if results3 and len(results3.get("docs", [])) > 0:
         print(f"    {i}. {title[:80]}...")
 else:
     print("  ⚠️  Still no results")
+

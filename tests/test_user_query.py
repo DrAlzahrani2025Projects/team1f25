@@ -4,9 +4,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.groq_client import GroqClient
+from core.clients.groq_client import GroqClient
 from core.ai_assistant import extract_search_parameters
-from core.search_service import perform_library_search
+from core.services.search_service import perform_library_search
 
 client = GroqClient()
 conv = [{'role': 'user', 'content': 'I need 5 journals about machine learning in healthcare'}]
@@ -40,3 +40,4 @@ if results:
         print(f"     {doc_type}: {count}")
 else:
     print("\n❌ No results")
+

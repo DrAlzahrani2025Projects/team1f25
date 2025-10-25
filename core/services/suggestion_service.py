@@ -3,7 +3,7 @@ Search suggestion service for generating alternative search terms.
 Follows SRP - Single Responsibility: Generate search suggestions.
 """
 from core.interfaces import ILLMClient, IPromptProvider
-from core.logging_utils import get_logger
+from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

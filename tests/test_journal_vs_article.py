@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.groq_client import GroqClient
+from core.clients.groq_client import GroqClient
 from core.ai_assistant import extract_search_parameters
 
 client = GroqClient()
@@ -24,3 +24,4 @@ for query in test_cases:
     print(f"Query: '{query}'")
     print(f"  → Type: {params['resource_type']}, Limit: {params['limit']}")
     print()
+

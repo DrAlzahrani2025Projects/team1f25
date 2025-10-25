@@ -4,7 +4,7 @@ Follows SRP - Single Responsibility: Format and parse search results.
 """
 import re
 from typing import Dict, Any, List
-from core.logging_utils import get_logger
+from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

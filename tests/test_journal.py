@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.csusb_library_client import explore_search
+from core.clients.csusb_library_client import explore_search
 
 print("Test 1: Search with 'journals' facet")
 results = explore_search("machine learning healthcare", limit=10, resource_type="journal")
@@ -31,3 +31,4 @@ for facet in facets:
         print(f"    Resource type facet values:")
         for value in facet.get("values", [])[:10]:
             print(f"      - {value.get('value')}: {value.get('count')}")
+

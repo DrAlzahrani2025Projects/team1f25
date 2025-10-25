@@ -4,8 +4,8 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.csusb_library_client import explore_search
-from core.search_service import parse_article_data
+from core.clients.csusb_library_client import explore_search
+from core.services.search_service import parse_article_data
 
 print("=== Testing Link Construction for Articles ===\n")
 
@@ -30,3 +30,4 @@ print("-" * 80)
 print("\n✅ Links are in correct discovery URL format")
 print("✅ Links include proper context (L for local, PC for CDI)")
 print("✅ All parameters: context, vid, search_scope, tab, docid")
+

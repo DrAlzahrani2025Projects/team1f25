@@ -1,12 +1,12 @@
-# core/search_service.py
+# core/services/search_service.py
 """
 Search service module for handling library searches and result processing.
 Refactored to follow SOLID principles with dependency injection.
 """
 from typing import Dict, Any, Optional, List
 from core.interfaces import ILibraryClient
-from core.result_formatter import ResultFormatter
-from core.logging_utils import get_logger
+from core.services.result_formatter import ResultFormatter
+from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -61,7 +61,7 @@ def perform_library_search(
     resource_type: Optional[str] = None
 ) -> Optional[Dict[str, Any]]:
     """Legacy function - delegates to SearchService for backward compatibility."""
-    from core.csusb_library_client import CSUSBLibraryClient
+    from core.clients.csusb_library_client import CSUSBLibraryClient
     client = CSUSBLibraryClient()
     service = SearchService(client)
     return service.search(query, limit, resource_type)

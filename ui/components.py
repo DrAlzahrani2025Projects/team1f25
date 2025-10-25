@@ -5,7 +5,7 @@ Refactored to follow SRP - each function has a single, clear purpose.
 """
 import streamlit as st
 from typing import Dict, Any
-from core.result_formatter import ResultFormatter
+from core.services.result_formatter import ResultFormatter
 
 
 def render_sidebar():

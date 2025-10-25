@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.csusb_library_client import explore_search
+from core.clients.csusb_library_client import explore_search
 
 results = explore_search("machine learning healthcare", limit=20)
 docs = results.get("docs", [])
@@ -21,3 +21,4 @@ for doc in docs:
 
 for doc_type, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True):
     print(f"  {doc_type}: {count}")
+

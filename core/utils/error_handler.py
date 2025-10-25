@@ -4,7 +4,7 @@ Follows DRY principle - consistent error handling patterns across the applicatio
 """
 import streamlit as st
 from typing import Optional, Callable, Any
-from core.logging_utils import get_logger
+from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 

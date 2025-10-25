@@ -4,9 +4,9 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from core.groq_client import GroqClient
+from core.clients.groq_client import GroqClient
 from core.ai_assistant import extract_search_parameters
-from core.search_service import perform_library_search
+from core.services.search_service import perform_library_search
 
 def suggest_alternative_search(groq_client: GroqClient, original_query: str) -> str:
     """Use AI to suggest alternative search terms when no results found."""
@@ -88,3 +88,4 @@ else:
     print(f"✅ SUCCESS: Found {len(results.get('docs', []))} results")
 
 print("\n" + "="*80)
+
