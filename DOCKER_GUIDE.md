@@ -203,32 +203,6 @@ docker run -p 5001:5001 \
    docker run -p 5001:5001 -e GROQ_API_KEY="your-key" team1f25-app
    ```
 
-### CI/CD Integration
-
-```yaml
-# GitHub Actions example
-name: Tests
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      
-      - name: Build test image
-        run: docker build -f Dockerfile.test -t team1f25-tests .
-      
-      - name: Run unit tests
-        run: docker run --rm team1f25-tests python run_pytest.py unit
-      
-      - name: Run integration tests
-        env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: docker run --rm -e GROQ_API_KEY="${GROQ_API_KEY}" team1f25-tests python run_pytest.py integration
-```
-
 ## Quick Reference
 
 ```bash
