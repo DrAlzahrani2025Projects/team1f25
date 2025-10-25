@@ -2,9 +2,11 @@ name: Quick Tests
 
 on:
   pull_request:
-    branches: [ main, fresh-start ]
+    branches: 
+      - main
   push:
-    branches: [ main, fresh-start, develop ]
+    branches:
+      - main
 
 jobs:
   quick-test:

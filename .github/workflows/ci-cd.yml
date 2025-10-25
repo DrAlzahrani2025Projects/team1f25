@@ -1,11 +1,12 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ main, fresh-start, develop ]
   pull_request:
-    branches: [ main, fresh-start ]
-  workflow_dispatch:  # Allow manual trigger
+    branches: 
+      - main
+  push:
+    branches:
+      - main
 
 jobs:
   # Job 1: Unit Tests (fast, no API key needed)
