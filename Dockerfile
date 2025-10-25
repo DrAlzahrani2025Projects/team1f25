@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
 COPY core/ core/
+COPY ui/ ui/
 
 RUN useradd -m appuser && mkdir -p /data && chown -R appuser:appuser /data /app
 USER appuser
