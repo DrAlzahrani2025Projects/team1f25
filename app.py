@@ -1,40 +1,67 @@
 # app.py
-from __future__ import annotations
-import streamlit as st
-from core.schemas import AgentInput
-from agents.orchestrator_agent import handle
+"""
+Scholar AI Assistant - Main Application Entry Point
 
-st.set_page_config(page_title="Scholar Article Lister", page_icon="📚", layout="wide")
+A conversational AI chatbot that helps users discover academic resources
+from the CSUSB library by understanding their research needs and presenting
+results in an organized table format.
+"""
+import streamlit as st
+from ui.session_state import initialize_session_state, reset_session_state
+from ui.components import (
+    render_sidebar,
+    render_chat_messages,
+    display_search_results_section,
+    get_initial_greeting
+)
+from ui.chat_handler import initialize_groq_client, handle_user_message
+
+# Configure the Streamlit page
+st.set_page_config(
+    page_title="Scholar AI Assistant",
+    page_icon="📚",
+    layout="wide"
+)
+
 
 def main():
-    st.subheader("Scholar Article Lister")
-    st.caption("Type queries like: **List top 10 climate change articles**")
-
-    # Initialize chat with a friendly first-time greeting
-    if "chat" not in st.session_state:
-        st.session_state["chat"] = [("assistant", "Hi, how can I help you?")]
-
-    # Render history
-    for role, content in st.session_state["chat"]:
-        with st.chat_message(role):
-            st.markdown(content)
-
-    prompt = st.chat_input("Enter your request here...")
-    if not prompt:
+    """Main application function."""
+    # Initialize session state
+    initialize_session_state()
+    
+    # Render page header
+    st.title("📚 Scholar AI Assistant")
+    st.markdown("*Your intelligent research companion for discovering academic resources*")
+    
+    # Initialize Groq client
+    groq_client = initialize_groq_client()
+    
+    if not groq_client:
+        st.warning("⚠️ Please set your GROQ_API_KEY environment variable to use this chatbot.")
         return
+    
+    # Render sidebar and check for new search request
+    if render_sidebar():
+        reset_session_state()
+        st.rerun()
+    
+    # Display chat messages
+    render_chat_messages()
+    
+    # Display search results if available
+    display_search_results_section()
+    
+    # Display initial greeting if no messages
+    if len(st.session_state.messages) == 0:
+        initial_message = get_initial_greeting()
+        st.session_state.messages.append({"role": "assistant", "content": initial_message})
+        with st.chat_message("assistant"):
+            st.markdown(initial_message)
+    
+    # Handle chat input
+    if prompt := st.chat_input("Type your message here..."):
+        handle_user_message(prompt, groq_client)
 
-    # User turn
-    st.session_state["chat"].append(("user", prompt))
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Single call to orchestrator (LIST only)
-    with st.chat_message("assistant"):
-        with st.spinner("Working…"):
-            out = handle(AgentInput(user_input=prompt))
-        st.markdown(out.text)
-
-    st.session_state["chat"].append(("assistant", out.text))
 
 if __name__ == "__main__":
     main()
