@@ -64,39 +64,42 @@ def display_results_table(results: Dict[str, Any]):
     else:
         st.success(f"Found {len(docs)} result(s)")
     
-    # Prepare data for table
+    # Prepare data for table with clickable links
     table_data = []
     for idx, doc in enumerate(docs, 1):
         article = parse_article_data(doc)
+        
+        # Get the link URL
+        link = article.get("link", "")
+        
         table_data.append({
             "#": idx,
-            "Title": article["title"][:100] + "..." if len(article["title"]) > 100 else article["title"],
-            "Author(s)": article["author"][:50] + "..." if len(article["author"]) > 50 else article["author"],
+            "Title": article["title"][:80] + "..." if len(article["title"]) > 80 else article["title"],
+            "Authors": article["author"][:40] + "..." if len(article["author"]) > 40 else article["author"],
             "Year": article["date"],
             "Type": article["type"],
-            "Source": article["source"][:40] + "..." if len(article["source"]) > 40 else article["source"],
-            "DOI": article["doi"]
+            "Link": link if link else None
         })
     
     # Display as dataframe
-    st.dataframe(table_data, use_container_width=True, hide_index=True)
-    
-    # Expandable details section
-    with st.expander("📋 View Detailed Information"):
-        for idx, doc in enumerate(docs, 1):
-            article = parse_article_data(doc)
-            st.markdown(f"### {idx}. {article['title']}")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"**Author(s):** {article['author']}")
-                st.write(f"**Publication Date:** {article['date']}")
-                st.write(f"**Type:** {article['type']}")
-                st.write(f"**Publisher:** {article['publisher']}")
-            with col2:
-                st.write(f"**Source:** {article['source']}")
-                st.write(f"**ISSN:** {article['issn']}")
-                st.write(f"**DOI:** {article['doi']}")
-            st.divider()
+    st.dataframe(
+        table_data,
+        width='stretch',
+        hide_index=True,
+        column_config={
+            "#": st.column_config.NumberColumn("#", width="small"),
+            "Title": st.column_config.TextColumn("Title", width="large"),
+            "Authors": st.column_config.TextColumn("Authors", width="medium"),
+            "Year": st.column_config.TextColumn("Year", width="small"),
+            "Type": st.column_config.TextColumn("Type", width="small"),
+            "Link": st.column_config.LinkColumn(
+                "Link",
+                help="Click to view full record",
+                display_text="🔗",
+                width="small"
+            )
+        }
+    )
 
 
 def display_search_results_section():

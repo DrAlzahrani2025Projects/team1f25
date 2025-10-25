@@ -65,11 +65,29 @@ def parse_article_data(doc: Dict[str, Any]) -> Dict[str, str]:
     pnx = doc.get("pnx", {})
     display = pnx.get("display", {})
     addata = pnx.get("addata", {})
+    control = pnx.get("control", {})
     
     # Helper function to get first item from list or return default
     def first_or_default(data, key, default="N/A"):
         val = data.get(key, [])
         return val[0] if isinstance(val, list) and val else default
+    
+    # Construct proper discovery link
+    context = doc.get("context", "L")
+    record_id = first_or_default(control, "recordid", "")
+    
+    if record_id and record_id != "N/A":
+        # Construct the proper discovery URL
+        link = (
+            f"https://csu-sb.primo.exlibrisgroup.com/discovery/fulldisplay"
+            f"?context={context}"
+            f"&vid=01CALS_USB:01CALS_USB"
+            f"&search_scope=CSUSB_CSU_articles"
+            f"&tab=CSUSB_CSU_Articles"
+            f"&docid={record_id}"
+        )
+    else:
+        link = ""
     
     return {
         "title": first_or_default(display, "title"),
@@ -80,4 +98,5 @@ def parse_article_data(doc: Dict[str, Any]) -> Dict[str, str]:
         "publisher": first_or_default(addata, "pub"),
         "issn": first_or_default(addata, "issn"),
         "doi": first_or_default(addata, "doi"),
+        "link": link,
     }
