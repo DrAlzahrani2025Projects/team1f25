@@ -118,6 +118,16 @@ def extract_dates_from_text(text: str) -> Tuple[Optional[int], Optional[int]]:
 
     text_low = text.lower()
 
+    # Range like: from 2015 to 2020, between 2010 and 2015, 2015-2020
+    m = re.search(r"from\s+(\d{4})\s+(?:to|-)\s+(\d{4})", text_low)
+    if not m:
+        m = re.search(r"between\s+(\d{4})\s+and\s+(\d{4})", text_low)
+    if not m:
+        m = re.search(r"(\d{4})\s*[-–]\s*(\d{4})", text_low)
+    if m:
+        y1, y2 = m.groups()
+        return int(y1), int(y2)
+
     # Full date: YYYY-MM-DD, YYYY/MM/DD, YYYYMMDD
     m = re.search(r"(\d{4})[\-/]?(\d{1,2})[\-/]?(\d{1,2})", text_low)
     if m:
