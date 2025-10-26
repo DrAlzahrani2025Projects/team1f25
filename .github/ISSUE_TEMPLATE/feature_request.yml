@@ -1,0 +1,70 @@
+name: "Feature Request"
+description: "Suggest a new feature or improvement to enhance the Scholar AI system"
+title: "[Feature]: "
+labels: ["enhancement"]
+type: "feature"
+assignees: []
+
+body:
+  - type: input
+    id: feature_title
+    attributes:
+      label: Feature Title
+      description: "Short, descriptive title for the feature request"
+
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: Problem Statement
+      description: "What problem does this feature solve? Why is it important?"
+      placeholder: "Explain the current limitation or issue users face"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_limitations
+    attributes:
+      label: Current Limitations
+      description: "List the current gaps, missing features, or challenges"
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: "Describe the solution, including UI, backend, and AI enhancements if applicable"
+
+  - type: textarea
+    id: technical_details
+    attributes:
+      label: Technical Details
+      description: "Include APIs, database schema, code changes, or architectural notes"
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Use Cases
+      description: "Who benefits from this feature and how?"
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: "List measurable conditions for this feature to be considered complete"
+
+  - type: textarea
+    id: implementation_checklist
+    attributes:
+      label: Implementation Checklist
+      description: "Break down implementation phases and tasks"
+
+  - type: textarea
+    id: related_issues
+    attributes:
+      label: Related Issues
+      description: "Mention related or blocking issues"
+
+  - type: textarea
+    id: additional_notes
+    attributes:
+      label: Additional Notes
+      description: "Include edge cases, accessibility notes, or extra considerations"
