@@ -52,7 +52,7 @@ Make the setup and cleanup scripts executable. This step only needs to be done o
 *Note: If you are on Windows, you must run this command in a `bash` terminal, such as the one provided by Git Bash or WSL.*
 
 ```bash
-chmod +x startup.sh cleanup.sh
+chmod +x scripts/startup.sh scripts/cleanup.sh
 ```
 
 ### Step 6: Run the Startup Script
@@ -60,7 +60,7 @@ chmod +x startup.sh cleanup.sh
 Execute the startup script to begin the setup process.
 
 ```bash
-./startup.sh
+./scripts/startup.sh
 ```
 
 ### Step 7: Enter Your API Key
@@ -78,7 +78,7 @@ Once the container starts, open your browser and navigate to:
 When you are finished, run the cleanup script to stop and remove the Docker container and image.
 
 ```bash
-./cleanup.sh
+./scripts/cleanup.sh
 ```
 
 ---
