@@ -5,7 +5,9 @@ Follows SRP - Single Responsibility: Analyze user conversations.
 import json
 from typing import Dict, List, Optional
 from core.interfaces import ILLMClient, IPromptProvider
+from core.utils.dates import extract_dates_from_text
 from core.utils.logging_utils import get_logger
+# Keep heuristics in ConversationAnalyzer (SRP). Shared normalization lives in core.utils.dates
 
 logger = get_logger(__name__)
 
@@ -93,122 +95,12 @@ class ConversationAnalyzer:
         }
 
     def _extract_dates_from_text(self, text: str) -> tuple[Optional[int], Optional[int]]:
-        """Heuristic date extraction from plain text.
+        """Delegate to shared utility for heuristic extraction.
 
         Returns tuple (date_from, date_to) where each value is an int (YYYY or YYYYMMDD)
         or None if not found.
         """
-        import re
-        from datetime import datetime
-
-        if not text:
-            return None, None
-
-        text = text.lower()
-
-        # Full date: YYYY-MM-DD, YYYY/MM/DD, YYYYMMDD, or 'March 5, 2020'
-        m = re.search(r"(\d{4})[\-/]?(\d{1,2})[\-/]?(\d{1,2})", text)
-        if m:
-            y, mm, dd = m.groups()
-            try:
-                return int(f"{int(y):04d}{int(mm):02d}{int(dd):02d}"), None
-            except Exception:
-                pass
-
-        # Month name formats: 'March 2020', 'Mar 2020', 'March 5, 2020'
-        month_names = r"(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
-        m = re.search(rf"{month_names}\s+(\d{{1,2}}),?\s+(\d{{4}})", text)
-        if m:
-            mon, day, yr = m.groups()
-            try:
-                month_idx = datetime.strptime(mon, "%b").month if len(mon) == 3 else datetime.strptime(mon, "%B").month
-            except Exception:
-                try:
-                    month_idx = datetime.strptime(mon[:3], "%b").month
-                except Exception:
-                    month_idx = None
-            if month_idx:
-                try:
-                    return int(f"{int(yr):04d}{int(month_idx):02d}{int(day):02d}"), None
-                except Exception:
-                    pass
-
-        # Month + year (no day)
-        m = re.search(rf"{month_names}\s+(\d{{4}})", text)
-        if m:
-            mon, yr = m.groups()
-            try:
-                month_idx = datetime.strptime(mon[:3], "%b").month
-                return int(f"{int(yr):04d}{int(month_idx):02d}01"), None
-            except Exception:
-                pass
-
-        # Range like: from 2015 to 2020, between 2010 and 2015, 2015-2020
-        m = re.search(r"from\s+(\d{4})\s+(?:to|-)\s+(\d{4})", text)
-        if not m:
-            m = re.search(r"between\s+(\d{4})\s+and\s+(\d{4})", text)
-        if not m:
-            m = re.search(r"(\d{4})\s*[-–]\s*(\d{4})", text)
-        if m:
-            y1, y2 = m.groups()
-            return int(y1), int(y2)
-
-        # Since 2018
-        m = re.search(r"since\s+(\d{4})", text)
-        if m:
-            y = int(m.group(1))
-            return y, None
-
-        # Last N years
-        m = re.search(r"last\s+(\d{1,2})\s+years", text)
-        if m:
-            n = int(m.group(1))
-            now = datetime.utcnow().year
-            return now - n + 1, now
-
-        # Last N months or 'last month'
-        m = re.search(r"last\s+(\d{1,2})\s+months", text)
-        if m:
-            n = int(m.group(1))
-            now_dt = datetime.utcnow()
-            start_month = (now_dt.month - n + 1)
-            start_year = now_dt.year
-            while start_month <= 0:
-                start_month += 12
-                start_year -= 1
-            start = int(f"{start_year:04d}{start_month:02d}01")
-            end = int(now_dt.strftime("%Y%m%d"))
-            return start, end
-
-        if re.search(r"last\s+month", text):
-            now_dt = datetime.utcnow()
-            mth = now_dt.month - 1
-            yr = now_dt.year
-            if mth == 0:
-                mth = 12
-                yr -= 1
-            start = int(f"{yr:04d}{mth:02d}01")
-            end = int(now_dt.strftime("%Y%m%d"))
-            return start, end
-
-        # Quarter like Q1 2018
-        m = re.search(r"q([1-4])\s*(\d{4})", text)
-        if m:
-            q, yr = m.groups()
-            q = int(q)
-            yr = int(yr)
-            quarter_map = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
-            start_m, end_m = quarter_map[q]
-            start = int(f"{yr:04d}{start_m:02d}01")
-            end = int(f"{yr:04d}{end_m:02d}31")
-            return start, end
-
-        # Single year mention
-        m = re.search(r"\b(19|20)\d{2}\b", text)
-        if m:
-            return int(m.group(0)), None
-
-        return None, None
+        return extract_dates_from_text(text)
 
     def extract_date_parameters(self, text: str) -> dict:
         """Public helper to extract date_from/date_to from a short text reply.

@@ -24,7 +24,6 @@ COPY scripts/ scripts/
 # Set environment variables for testing
 ENV PYTHONPATH=/app
 ENV GROQ_API_KEY=${GROQ_API_KEY}
-ENV PRIMO_API_KEY=${PRIMO_API_KEY}
 
 # Default command to run new pytest-based tests
 # Can be overridden at runtime:
