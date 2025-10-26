@@ -71,7 +71,7 @@ class ResultFormatter:
         
         # Extract 4-digit year
         if date and date != "N/A":
-            year_match = re.search(r'\b(19|20)\d{2}\b', date)
+            year_match = re.search(r'\b\d{4}\b', date)
             if year_match:
                 return year_match.group(0)
         
