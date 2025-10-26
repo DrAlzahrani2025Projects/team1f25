@@ -32,7 +32,7 @@ jobs:
           pip install pytest pytest-mock
       
       - name: Run unit tests
-        run: python run_pytest.py unit
+        run: python scripts/run_pytest.py unit
       
       - name: Test summary
         if: always()

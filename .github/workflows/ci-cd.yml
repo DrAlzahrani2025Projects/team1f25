@@ -35,7 +35,7 @@ jobs:
       
       - name: Run unit tests
         run: |
-          python run_pytest.py unit
+          python scripts/run_pytest.py unit
       
       - name: Generate coverage report
         run: |
@@ -75,7 +75,7 @@ jobs:
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          python run_pytest.py integration
+          python scripts/run_pytest.py integration
         continue-on-error: true  # Don't fail build if API is down
 
   # Job 3: Docker Build Test
@@ -93,15 +93,15 @@ jobs:
       
       - name: Build production image
         run: |
-          docker build -t team1f25-app:test .
+          docker build -f docker/Dockerfile -t team1f25-app:test .
       
       - name: Build test image
         run: |
-          docker build -f Dockerfile.test -t team1f25-tests:test .
+          docker build -f docker/Dockerfile.test -t team1f25-tests:test .
       
       - name: Run tests in container
         run: |
-          docker run --rm team1f25-tests:test python run_pytest.py unit
+          docker run --rm team1f25-tests:test python scripts/run_pytest.py unit
       
       - name: Test production container starts
         run: |
