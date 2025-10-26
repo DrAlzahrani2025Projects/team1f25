@@ -4,13 +4,10 @@ on:
   pull_request:
     branches: 
       - main
-      - \*-dev
-      - fresh-start # will be removed later
   push:
     branches:
       - main
-      - \*-dev
-      - fresh-start # will be removed later
+      - "*-dev"
 jobs:
   quick-test:
     name: Quick Unit Tests
