@@ -58,7 +58,9 @@ class CSUSBLibraryClient(ILibraryClient):
         query: str,
         limit: int = 10,
         offset: int = 0,
-        resource_type: Optional[str] = None
+        resource_type: Optional[str] = None,
+        date_from: Optional[int] = None,
+        date_to: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Search the library database.
@@ -68,7 +70,9 @@ class CSUSBLibraryClient(ILibraryClient):
             q=query,
             limit=limit,
             offset=offset,
-            resource_type=resource_type
+            resource_type=resource_type,
+            date_from=date_from,
+            date_to=date_to,
         )
     
     def _explore_search(
@@ -80,6 +84,8 @@ class CSUSBLibraryClient(ILibraryClient):
         query: str | None = None,
         sort: str = "rank",
         resource_type: str | None = None,
+        date_from: int | None = None,
+        date_to: int | None = None,
     ) -> Dict[str, Any]:
         """Internal method for Primo search."""
         if (not q) and query:
@@ -120,6 +126,126 @@ class CSUSBLibraryClient(ILibraryClient):
             facet_value = type_facets.get(resource_type.lower(), resource_type.lower())
             params["qInclude"] = f"facet_rtype,exact,{facet_value}"
             _log.info(f"Adding resource type filter: {params['qInclude']}")
+
+        # Add date range filter if specified (year or YYYYMMDD accepted)
+        if date_from is not None or date_to is not None:
+            from datetime import datetime
+
+            import calendar
+
+            MIN_YEAR = 1900
+
+            def _norm(d: int | None, is_start: bool) -> str:
+                """Normalize a date-like input into YYYYMMDD string.
+
+                Rules:
+                - None -> default start: 19000101, end: today
+                - 4-digit year -> start: YYYY0101, end: YYYY1231
+                - 6-digit YYYYMM -> start: YYYYMM01, end: YYYYMM<lastday>
+                - 8-digit YYYYMMDD -> used as-is
+                - other digit lengths -> take first 4 as year, remaining as month/day where possible
+                - enforce MIN_YEAR for the year component (raise ValueError if below)
+                """
+                if d is None:
+                    return "19000101" if is_start else datetime.utcnow().strftime("%Y%m%d")
+
+                s = str(d)
+                digits = ''.join(ch for ch in s if ch.isdigit())
+
+                # If we have at least 8 digits, use first 8
+                if len(digits) >= 8:
+                    ymd = digits[:8]
+                    year = int(ymd[:4])
+                    if year < MIN_YEAR:
+                        raise ValueError(f"Year {year} is before minimum allowed {MIN_YEAR}")
+                    return ymd
+
+                # 4-digit year
+                if len(digits) == 4:
+                    year = int(digits)
+                    if year < MIN_YEAR:
+                        raise ValueError(f"Year {year} is before minimum allowed {MIN_YEAR}")
+                    return f"{digits}0101" if is_start else f"{digits}1231"
+
+                # 6-digit YYYYMM
+                if len(digits) == 6:
+                    year = int(digits[:4])
+                    month = int(digits[4:6])
+                    if year < MIN_YEAR:
+                        raise ValueError(f"Year {year} is before minimum allowed {MIN_YEAR}")
+                    month = max(1, min(month, 12))
+                    if is_start:
+                        return f"{year:04d}{month:02d}01"
+                    # end of month
+                    last = calendar.monthrange(year, month)[1]
+                    return f"{year:04d}{month:02d}{last:02d}"
+
+                # 5 or 7-digit (or other short) forms: interpret first 4 as year and remaining as month/day
+                if len(digits) > 4:
+                    year = int(digits[:4])
+                    if year < MIN_YEAR:
+                        raise ValueError(f"Year {year} is before minimum allowed {MIN_YEAR}")
+                    rest = digits[4:]
+                    # month present?
+                    if len(rest) == 1:
+                        month = int(rest)
+                        month = max(1, min(month, 12))
+                        if is_start:
+                            return f"{year:04d}{month:02d}01"
+                        last = calendar.monthrange(year, month)[1]
+                        return f"{year:04d}{month:02d}{last:02d}"
+                    if len(rest) >= 2:
+                        month = int(rest[:2])
+                        month = max(1, min(month, 12))
+                        if is_start:
+                            return f"{year:04d}{month:02d}01"
+                        last = calendar.monthrange(year, month)[1]
+                        return f"{year:04d}{month:02d}{last:02d}"
+
+                # if only year digits shorter than 4 or anything else, fall back to defaults
+                # but attempt to parse year if possible
+                if len(digits) <= 4 and digits.isdigit():
+                    year = int(digits)
+                    if year < MIN_YEAR:
+                        raise ValueError(f"Year {year} is before minimum allowed {MIN_YEAR}")
+                    return f"{year:04d}0101" if is_start else f"{year:04d}1231"
+
+                # Fallback: pad/truncate to 8
+                if len(digits) < 8:
+                    padded = digits.ljust(8, '0')
+                else:
+                    padded = digits[:8]
+                year = int(padded[:4])
+                if year < MIN_YEAR:
+                    raise ValueError(f"Year {year} is before minimum allowed {MIN_YEAR}")
+                return padded
+
+            start_str = _norm(date_from, True)
+            end_str = _norm(date_to, False)
+
+            # Clamp future dates to today
+            today = datetime.utcnow().strftime("%Y%m%d")
+            try:
+                if end_str and end_str.isdigit() and int(end_str) > int(today):
+                    _log.info(f"Clamping end date {end_str} to today {today}")
+                    end_str = today
+                if start_str and start_str.isdigit() and int(start_str) > int(today):
+                    _log.info(f"Clamping start date {start_str} to today {today}")
+                    start_str = today
+                # Swap if start > end
+                if start_str.isdigit() and end_str.isdigit() and int(start_str) > int(end_str):
+                    _log.info(f"Swapping start/end dates: {start_str} > {end_str}")
+                    start_str, end_str = end_str, start_str
+            except Exception:
+                pass
+
+            # Append date filter to the q parameter
+            params_q = params.get("q", "")
+            if params_q.endswith(";"):
+                params_q = params_q.rstrip(";")
+            date_segment = f"dr_s,exact,{start_str},AND;dr_e,exact,{end_str};"
+            params["q"] = params_q + ";" + date_segment if params_q else date_segment
+            _log.info(f"Adding date range filter to q: {params['q']}")
         
         r = self.session.get(url, params=params, timeout=self.timeout)
         _log.info("Primo explore_search URL: %s", r.url)
@@ -148,6 +274,8 @@ def explore_search(
     query: str | None = None,
     sort: str = "rank",
     resource_type: str | None = None,
+    date_from: int | None = None,
+    date_to: int | None = None,
 ) -> Dict[str, Any]:
     """Legacy function - delegates to CSUSBLibraryClient for backward compatibility."""
     client = CSUSBLibraryClient()
@@ -157,5 +285,7 @@ def explore_search(
         offset=offset,
         query=query,
         sort=sort,
-        resource_type=resource_type
+        resource_type=resource_type,
+        date_from=date_from,
+        date_to=date_to
     )

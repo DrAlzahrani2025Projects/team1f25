@@ -18,7 +18,10 @@ def initialize_session_state():
             "topic": None,
             "keywords": [],
             "resource_type": None,
-            "year_range": None,
+            # date filters stored as YYYYMMDD ints or None
+            "date_from": None,
+            "date_to": None,
+            "quick_date_filter": None,
             "additional_info": None
         }
     
@@ -34,7 +37,20 @@ def reset_session_state():
         "topic": None,
         "keywords": [],
         "resource_type": None,
-        "year_range": None,
+        # Keep date fields for compatibility
+        "date_from": None,
+        "date_to": None,
+        "quick_date_filter": None,
         "additional_info": None
     }
     st.session_state.search_results = None
+
+    # track whether filters are active
+    if "filters_active" not in st.session_state:
+        st.session_state.filters_active = False
+    st.session_state.filters_active = False
+    # pending conversation params used when clarifying date ranges
+    if "pending_conversation" in st.session_state:
+        st.session_state.pop("pending_conversation", None)
+    if "pending_search_params" in st.session_state:
+        st.session_state.pop("pending_search_params", None)

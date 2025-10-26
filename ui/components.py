@@ -30,13 +30,13 @@ def render_sidebar():
         - Example: "I need articles about machine learning in healthcare"
         """)
         
+
         st.divider()
-        
         new_search = st.button("🔄 Start New Search")
-        
+
         st.divider()
         st.caption("🔬 Powered by Groq AI & CSUSB Library")
-        
+
         return new_search
 
 

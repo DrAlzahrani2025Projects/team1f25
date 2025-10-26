@@ -57,8 +57,17 @@ class ScholarAIApp:
     
     def handle_sidebar_actions(self):
         """Handle sidebar interactions."""
-        if render_sidebar():
+        new_search = render_sidebar()
+        # If Start New Search was clicked, reset and rerun
+        if new_search:
             reset_session_state()
+            st.rerun()
+
+        # If sidebar signaled an action (apply/clear filters), handle rerun centrally
+        action = st.session_state.get("sidebar_action")
+        if action in ("apply", "clear"):
+            # clear the flag and rerun to reflect changes
+            st.session_state.pop("sidebar_action", None)
             st.rerun()
     
     def display_initial_greeting(self):

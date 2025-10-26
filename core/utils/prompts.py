@@ -104,6 +104,8 @@ Extract:
 1. "query": The main search terms (simple, no Boolean operators)
 2. "limit": Number of results requested (default: 10 if not specified)
 3. "resource_type": Type of resource to search for
+4. "date_from": (optional) Lower bound for publication date. Use YYYY or YYYYMMDD or null.
+5. "date_to": (optional) Upper bound for publication date. Use YYYY or YYYYMMDD or null.
 
 Resource types:
 - "article" - for scholarly/journal articles (when user says "articles" or "journal articles")
@@ -137,6 +139,22 @@ User: "Get me 7 scholarly articles on robotics"
 {{"query": "robotics", "limit": 7, "resource_type": "article"}}
 
 Respond with ONLY valid JSON, nothing else."""
+    
+    # Additional examples showing date formats the LLM should recognize. These
+    # are not exhaustive but help the model learn preferred shapes for dates.
+    DATE_EXTRACTION_EXAMPLES = """
+Examples of date formats you may return for date_from/date_to:
+- Year only: 2018
+- Year range: 2015 to 2018
+- Full date: 2020-03-15 or March 15, 2020
+- Month and year: March 2020
+- Relative: since 2019, last 3 years, last month, last 6 months
+- Quarter: Q1 2018 (interpret as Jan-Mar 2018)
+
+When returning dates, prefer integers in YYYY or YYYYMMDD format. Use null
+when a bound is not specified.
+"""
+    
 
     SUGGESTION_TEMPLATE = """The user searched for "{query}" in an academic library database but got 0 results.
 
