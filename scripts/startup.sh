@@ -1,17 +1,24 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
 # Run the cleanup script first
-./cleanup.sh --hard > /dev/null 2>&1 || true
+"$SCRIPT_DIR/cleanup.sh" --hard > /dev/null 2>&1 || true
 
 # Ask for the API key
 echo "Please enter your Groq API key:"
 read -s GROQ_API_KEY
 echo
 
+# Change to project root for Docker commands
+cd "$PROJECT_ROOT"
+
 # Build the Docker image
 echo "Building Docker image..."
-DOCKER_BUILDKIT=1 docker build -t team1f25-streamlit .
+DOCKER_BUILDKIT=1 docker build -f docker/Dockerfile -t team1f25-streamlit .
 
 # Run the Docker container
 echo "Starting Docker container..."

@@ -11,7 +11,7 @@ This project provides two Docker configurations:
 ### Build
 
 ```bash
-docker build -t team1f25-app .
+docker build -f docker/Dockerfile -t team1f25-app .
 ```
 
 ### Run
@@ -36,7 +36,7 @@ Open browser: http://localhost:5001/team1f25
 ### Build
 
 ```bash
-docker build -f Dockerfile.test -t team1f25-tests .
+docker build -f docker/Dockerfile.test -t team1f25-tests .
 ```
 
 ### Run Tests
@@ -46,16 +46,16 @@ docker build -f Dockerfile.test -t team1f25-tests .
 docker run --rm team1f25-tests
 
 # Run integration tests (requires API key)
-docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python run_pytest.py integration
+docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pytest.py integration
 
 # Run end-to-end tests
-docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python run_pytest.py e2e
+docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pytest.py e2e
 
 # Run all pytest tests
-docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python run_pytest.py all
+docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pytest.py all
 
 # Run legacy tests
-docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python run_pytest.py legacy
+docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pytest.py legacy
 ```
 
 ### Run with Verbose Output
@@ -94,7 +94,9 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     image: team1f25-app
     ports:
       - "5001:5001"
@@ -107,11 +109,11 @@ services:
   tests:
     build:
       context: .
-      dockerfile: Dockerfile.test
+      dockerfile: docker/Dockerfile.test
     image: team1f25-tests
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
-    command: python run_pytest.py all
+    command: python scripts/run_pytest.py all
 ```
 
 ### Usage
@@ -124,7 +126,7 @@ docker-compose up app
 docker-compose run --rm tests
 
 # Run specific test type
-docker-compose run --rm tests python run_pytest.py unit
+docker-compose run --rm tests python scripts/run_pytest.py unit
 
 # Clean up
 docker-compose down
@@ -144,14 +146,14 @@ docker-compose down
 
 ```bash
 # Rebuild the test image
-docker build -f Dockerfile.test -t team1f25-tests . --no-cache
+docker build -f docker/Dockerfile.test -t team1f25-tests . --no-cache
 ```
 
 ### Integration tests skip
 
 ```bash
 # Make sure API key is set
-docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python run_pytest.py integration
+docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pytest.py integration
 ```
 
 ### Port already in use
@@ -184,8 +186,8 @@ docker run -p 5001:5001 \
 
 1. **Build once:**
    ```bash
-   docker build -t team1f25-app .
-   docker build -f Dockerfile.test -t team1f25-tests .
+   docker build -f docker/Dockerfile -t team1f25-app .
+   docker build -f docker/Dockerfile.test -t team1f25-tests .
    ```
 
 2. **Run unit tests frequently:**
@@ -195,7 +197,7 @@ docker run -p 5001:5001 \
 
 3. **Run integration tests before commit:**
    ```bash
-   docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python run_pytest.py all
+   docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pytest.py all
    ```
 
 4. **Test the app locally:**
@@ -207,18 +209,18 @@ docker run -p 5001:5001 \
 
 ```bash
 # Production
-docker build -t team1f25-app .
+docker build -f docker/Dockerfile -t team1f25-app .
 docker run -p 5001:5001 -e GROQ_API_KEY="key" team1f25-app
 
 # Tests (unit - fast)
-docker build -f Dockerfile.test -t team1f25-tests .
+docker build -f docker/Dockerfile.test -t team1f25-tests .
 docker run --rm team1f25-tests
 
 # Tests (integration - requires API key)
-docker run --rm -e GROQ_API_KEY="key" team1f25-tests python run_pytest.py integration
+docker run --rm -e GROQ_API_KEY="key" team1f25-tests python scripts/run_pytest.py integration
 
 # Tests (all)
-docker run --rm -e GROQ_API_KEY="key" team1f25-tests python run_pytest.py all
+docker run --rm -e GROQ_API_KEY="key" team1f25-tests python scripts/run_pytest.py all
 
 # Cleanup
 docker system prune -a

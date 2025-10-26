@@ -4,16 +4,21 @@
 Test Runner - Run all or specific tests
 
 Usage:
-    python run_tests.py              # Run all tests
-    python run_tests.py search       # Run search-related tests
-    python run_tests.py params       # Run parameter tests
-    python run_tests.py e2e          # Run end-to-end tests
+    python scripts/run_tests.py              # Run all tests
+    python scripts/run_tests.py search       # Run search-related tests
+    python scripts/run_tests.py params       # Run parameter tests
+    python scripts/run_tests.py e2e          # Run end-to-end tests
 """
 
 import sys
 import os
 import subprocess
 from pathlib import Path
+
+# Get project root (parent of scripts directory)
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+TESTS_DIR = PROJECT_ROOT / "tests"
 
 # Set UTF-8 encoding for Windows console
 if sys.platform == 'win32':
@@ -52,7 +57,7 @@ def run_test(test_file):
     print(f"Running: {test_file}")
     print('='*80)
     
-    test_path = Path("tests") / test_file
+    test_path = TESTS_DIR / test_file
     if not test_path.exists():
         print(f"[FAIL] Test file not found: {test_path}")
         return False
@@ -61,7 +66,7 @@ def run_test(test_file):
     env = os.environ.copy()
     env['PYTHONIOENCODING'] = 'utf-8'
     
-    result = subprocess.run([sys.executable, str(test_path)], env=env)
+    result = subprocess.run([sys.executable, str(test_path)], env=env, cwd=str(PROJECT_ROOT))
     
     if result.returncode == 0:
         print(f"[PASS] {test_file} passed")
@@ -127,7 +132,7 @@ def main():
         elif category in TEST_CATEGORIES:
             run_category(category)
         else:
-            print(f"Usage: python run_tests.py [category]")
+            print(f"Usage: python scripts/run_tests.py [category]")
             print(f"\nAvailable categories:")
             for cat, tests in TEST_CATEGORIES.items():
                 print(f"  {cat}: {len(tests)} tests")
@@ -139,8 +144,8 @@ def main():
             for test in tests:
                 print(f"  - {test}")
         print("\nUsage:")
-        print("  python run_tests.py [category]")
-        print("  python run_tests.py all")
+        print("  python scripts/run_tests.py [category]")
+        print("  python scripts/run_tests.py all")
 
 if __name__ == "__main__":
     main()

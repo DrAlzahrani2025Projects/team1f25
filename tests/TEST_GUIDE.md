@@ -129,10 +129,10 @@ pytest -k "journal or article"
 
 ```bash
 # Using the custom test runner
-python run_pytest.py
+python scripts/run_pytest.py
 
 # Using the alternative test runner
-python run_tests.py
+python scripts/run_tests.py
 ```
 
 ## Test Categories

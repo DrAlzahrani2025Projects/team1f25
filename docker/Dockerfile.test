@@ -15,16 +15,15 @@ COPY ui/ ui/
 # Copy test infrastructure
 COPY tests/ tests/
 COPY pytest.ini .
-COPY run_tests.py .
-COPY run_pytest.py .
+COPY scripts/ scripts/
 
 # Set environment variables for testing
 ENV PYTHONPATH=/app
 
 # Default command to run new pytest-based tests
 # Can be overridden at runtime:
-#   docker run <image> python run_pytest.py unit
-#   docker run <image> python run_pytest.py integration
-#   docker run <image> python run_pytest.py all
-#   docker run <image> python run_pytest.py legacy
-CMD ["python", "run_pytest.py", "all"]
+#   docker run <image> python scripts/run_pytest.py unit
+#   docker run <image> python scripts/run_pytest.py integration
+#   docker run <image> python scripts/run_pytest.py all
+#   docker run <image> python scripts/run_pytest.py legacy
+CMD ["python", "scripts/run_pytest.py", "unit"]

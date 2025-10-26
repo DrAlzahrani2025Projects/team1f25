@@ -7,6 +7,11 @@ import sys
 import subprocess
 from pathlib import Path
 
+# Get project root (parent of scripts directory)
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+TESTS_DIR = PROJECT_ROOT / "tests"
+
 
 def main():
     """Run tests based on command line arguments."""
@@ -20,25 +25,25 @@ def main():
     cmd = [sys.executable, "-m", "pytest"]
     
     if test_type == "unit":
-        cmd.extend(["tests/unit", "-m", "unit or not integration"])
+        cmd.extend([str(TESTS_DIR / "unit"), "-m", "unit or not integration"])
         print("=" * 80)
         print("Running UNIT TESTS (no external dependencies)")
         print("=" * 80)
     
     elif test_type == "integration":
-        cmd.extend(["tests/integration", "-m", "integration"])
+        cmd.extend([str(TESTS_DIR / "integration"), "-m", "integration"])
         print("=" * 80)
         print("Running INTEGRATION TESTS (requires network/APIs)")
         print("=" * 80)
     
     elif test_type == "e2e":
-        cmd.extend(["tests/integration", "-m", "e2e"])
+        cmd.extend([str(TESTS_DIR / "integration"), "-m", "e2e"])
         print("=" * 80)
         print("Running END-TO-END TESTS (complete workflows)")
         print("=" * 80)
     
     elif test_type == "all":
-        cmd.append("tests")
+        cmd.append(str(TESTS_DIR))
         print("=" * 80)
         print("Running ALL TESTS")
         print("=" * 80)
@@ -62,9 +67,9 @@ def main():
     # Add verbose output
     cmd.extend(["-v", "--tb=short"])
     
-    # Run pytest
+    # Run pytest from project root
     try:
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
         sys.exit(result.returncode)
     except FileNotFoundError:
         print("\n❌ Error: pytest not found!")
@@ -74,7 +79,7 @@ def main():
 
 def run_legacy_tests():
     """Run legacy test scripts for backward compatibility."""
-    legacy_dir = Path("tests")
+    legacy_dir = TESTS_DIR
     legacy_scripts = [
         "check_types.py",
         "test_api_filter.py",
@@ -116,7 +121,7 @@ def print_usage():
 Modern Test Runner with pytest
 
 Usage:
-    python run_pytest.py <test_type>
+    python scripts/run_pytest.py <test_type>
 
 Test Types:
     unit         - Run unit tests only (fast, no external dependencies)
@@ -129,10 +134,10 @@ Options:
     -h, --help   - Show this help message
 
 Examples:
-    python run_pytest.py unit              # Run only unit tests
-    python run_pytest.py integration       # Run integration tests
-    python run_pytest.py all               # Run all pytest tests
-    python run_pytest.py legacy            # Run legacy scripts
+    python scripts/run_pytest.py unit              # Run only unit tests
+    python scripts/run_pytest.py integration       # Run integration tests
+    python scripts/run_pytest.py all               # Run all pytest tests
+    python scripts/run_pytest.py legacy            # Run legacy scripts
 
 Additional pytest options:
     pytest tests/unit -v                   # Verbose unit tests
