@@ -28,6 +28,7 @@ class SearchService:
         """Perform search using the library client."""
         try:
             logger.info(f"Performing library search - query: {query}, limit: {limit}, type: {resource_type}")
+            logger.debug("SearchService.search - preparing to call library_client.search with params: %s", {"query": query, "limit": limit, "resource_type": resource_type})
             
             results = self.library_client.search(
                 query=query, 
@@ -35,11 +36,14 @@ class SearchService:
                 offset=0, 
                 resource_type=resource_type
             )
+
+            logger.debug("SearchService.search - raw results received (type=%s)", type(results))
             
             if results:
                 doc_count = len(results.get("docs", []))
                 total_results = results.get("info", {}).get("total", 0)
                 logger.info(f"Search returned {doc_count} docs, total available: {total_results}")
+                logger.debug("SearchService.search - sample results keys: %s", list(results.keys()))
             else:
                 logger.warning("Search returned None or empty results")
                 

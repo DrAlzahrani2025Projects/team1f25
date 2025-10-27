@@ -101,8 +101,10 @@ class ChatOrchestrator:
             # No results found
             self._handle_no_results(query, resource_type)
         else:
-            # Success
+            # Success: store results and the search query in session state so the UI
+            # can display the searched keyword above the results table.
             st.session_state.search_results = results
+            st.session_state.last_search_query = query
             st.rerun()
     
     def _handle_search_error(self):
@@ -133,6 +135,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
     """
     # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
+    logger.debug("handle_user_message - received prompt (len=%d): %s", len(prompt or ""), prompt)
     with st.chat_message("user"):
         st.markdown(prompt)
     
@@ -146,6 +149,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
             
             # Check if should search
             if orchestrator.analyzer.should_trigger_search(prompt):
+                logger.debug("User input indicates a search should be triggered")
                 orchestrator.execute_search(conversation_history)
                 return
             
@@ -155,6 +159,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
             
             # Check if ready to search
             if "READY_TO_SEARCH" in ai_response:
+                logger.debug("AI signaled READY_TO_SEARCH")
                 orchestrator.execute_search(conversation_history)
             else:
                 # Continue conversation
