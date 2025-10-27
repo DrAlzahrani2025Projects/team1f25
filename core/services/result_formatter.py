@@ -27,6 +27,8 @@ class ResultFormatter:
         display = pnx.get("display", {})
         addata = pnx.get("addata", {})
         control = pnx.get("control", {})
+        record_id = ResultFormatter._get_first_value(control, "recordid", "")
+        logger.debug("parse_document - parsing doc recordid=%s", record_id)
         
         # Extract basic fields
         title = ResultFormatter._get_first_value(display, "title")
@@ -115,6 +117,7 @@ class ResultFormatter:
     @staticmethod
     def format_table_data(docs: List[Dict]) -> List[Dict[str, Any]]:
         """Format documents for table display."""
+        logger.debug("format_table_data - formatting %d docs", len(docs))
         table_data = []
         for idx, doc in enumerate(docs, 1):
             article = ResultFormatter.parse_document(doc)
