@@ -1,3 +1,21 @@
+from core.services.result_formatter import ResultFormatter
+
+
+def test_is_peer_reviewed_from_facets_variants():
+    variants = [
+        ["peer_reviewed"],
+        ["Peer Reviewed"],
+        ["peer-reviewed"],
+        ["some", "Peer Reviewed"],
+    ]
+
+    for tlevel in variants:
+        assert ResultFormatter._is_peer_reviewed_from_facets(tlevel) is True
+
+
+def test_is_not_peer_reviewed_when_missing_or_other():
+    assert ResultFormatter._is_peer_reviewed_from_facets([]) is False
+    assert ResultFormatter._is_peer_reviewed_from_facets(["other"]) is False
 """
 Unit tests for ResultFormatter service.
 Tests parsing and formatting logic without external dependencies.
