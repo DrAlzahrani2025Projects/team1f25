@@ -17,9 +17,15 @@ class ConversationAnalyzer:
     # Keywords that indicate user wants to search immediately
     SEARCH_TRIGGER_KEYWORDS = [
         "search now", "find articles", "show me", "search for", 
-        "look for", "get articles", "retrieve", "fetch", "articles",
-        "books", "journals", "about", "need", "want", "looking for"
+        "look for", "get articles", "retrieve", "fetch", 
+        "looking for"
     ]
+    
+    # Resource type keywords that indicate search intent
+    RESOURCE_TYPE_KEYWORDS = ["articles", "books", "journals", "about"]
+    
+    # Intent keywords (need more context to determine if it's a search)
+    INTENT_KEYWORDS = ["need", "want"]
     
     def __init__(self, llm_client: ILLMClient, prompt_provider: IPromptProvider):
         """Initialize with dependencies (Dependency Injection)."""
@@ -30,7 +36,7 @@ class ConversationAnalyzer:
         """Check if user explicitly wants to trigger a search."""
         user_input_lower = user_input.lower()
         
-        # Check for explicit search triggers
+        # Check for explicit search triggers (high confidence)
         if any(keyword in user_input_lower for keyword in self.SEARCH_TRIGGER_KEYWORDS):
             return True
             
@@ -38,10 +44,17 @@ class ConversationAnalyzer:
         if user_input_lower.strip() in ["articles", "books", "journals", "thesis"]:
             return True
             
-        # Check for compound queries (topic + type)
+        # Check for compound queries (topic + type) - resource type with context
         type_indicators = ["articles about", "books about", "journals about", "papers on", "research on"]
         if any(indicator in user_input_lower for indicator in type_indicators):
             return True
+        
+        # Check for intent keywords COMBINED with resource types or research terms
+        if any(intent in user_input_lower for intent in self.INTENT_KEYWORDS):
+            # Only trigger if combined with resource types or research indicators
+            research_indicators = ["article", "book", "journal", "paper", "research", "publication", "study", "thesis"]
+            if any(indicator in user_input_lower for indicator in research_indicators):
+                return True
             
         return False
 

@@ -16,54 +16,63 @@ class TestCSUSBLibraryClientPeerReview:
         """Setup test fixtures."""
         self.client = CSUSBLibraryClient()
     
-    @patch('core.clients.csusb_library_client.S')
-    def test_search_with_peer_review_filter(self, mock_session):
+    def test_search_with_peer_review_filter(self):
         """Test that peer_reviewed_only adds correct facet filter."""
-        # Setup mock response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"docs": [], "info": {"total": 0}}
-        mock_session.get.return_value = mock_response
-        
-        # Call search with peer_reviewed_only=True
-        self.client.search("test query", peer_reviewed_only=True)
-        
-        # Get the actual URL that would have been requested
-        called_url = mock_session.get.call_args[1]['params']
-        
-        # Verify qInclude param contains peer-review facet
-        assert 'qInclude' in called_url
-        qinclude = called_url['qInclude']
-        if isinstance(qinclude, list):
-            assert "facet_tlevel,exact,peer_reviewed" in qinclude
-        else:
+        # Mock the session's get method directly on the client instance
+        with patch.object(self.client.session, 'get') as mock_get:
+            # Setup mock response
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"docs": [], "info": {"total": 0}}
+            mock_response.url = "http://test.com"
+            mock_get.return_value = mock_response
+            
+            # Call search with peer_reviewed_only=True
+            self.client.search("test query", peer_reviewed_only=True)
+            
+            # Verify that get was called
+            assert mock_get.called
+            
+            # Get the call arguments
+            call_args = mock_get.call_args
+            params = call_args.kwargs.get('params', {})
+            
+            # Verify qInclude param contains peer-review facet
+            assert 'qInclude' in params, f"qInclude not found in params: {params}"
+            qinclude = params['qInclude']
             assert "facet_tlevel,exact,peer_reviewed" in qinclude
     
-    @patch('core.clients.csusb_library_client.S')
-    def test_search_with_multiple_filters(self, mock_session):
+    def test_search_with_multiple_filters(self):
         """Test peer_reviewed_only with resource_type filter."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"docs": [], "info": {"total": 0}}
-        mock_session.get.return_value = mock_response
-        
-        # Call search with both filters
-        self.client.search(
-            "test query", 
-            resource_type="article",
-            peer_reviewed_only=True
-        )
-        
-        # Verify both facets are included
-        called_url = mock_session.get.call_args[1]['params']
-        qinclude = called_url['qInclude']
-        
-        if isinstance(qinclude, list):
-            assert any("facet_rtype,exact,articles" in q for q in qinclude)
-            assert any("facet_tlevel,exact,peer_reviewed" in q for q in qinclude)
-        else:
-            assert "facet_rtype,exact,articles" in qinclude
-            assert "facet_tlevel,exact,peer_reviewed" in qinclude
+        # Mock the session's get method directly on the client instance
+        with patch.object(self.client.session, 'get') as mock_get:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"docs": [], "info": {"total": 0}}
+            mock_response.url = "http://test.com"
+            mock_get.return_value = mock_response
+            
+            # Call search with both filters
+            self.client.search(
+                "test query", 
+                resource_type="article",
+                peer_reviewed_only=True
+            )
+            
+            # Verify that get was called
+            assert mock_get.called
+            
+            # Get call arguments
+            call_args = mock_get.call_args
+            params = call_args.kwargs.get('params', {})
+            
+            # Verify both facets are included
+            assert 'qInclude' in params, f"qInclude not found in params: {params}"
+            qinclude = params['qInclude']
+            
+            # Both filters should be in the qInclude parameter
+            assert "facet_rtype,exact,articles" in qinclude, f"Article filter not found in: {qinclude}"
+            assert "facet_tlevel,exact,peer_reviewed" in qinclude, f"Peer review filter not found in: {qinclude}"
 
 
 class TestResultFormatterPeerReview:
