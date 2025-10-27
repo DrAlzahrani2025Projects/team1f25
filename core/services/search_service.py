@@ -23,17 +23,22 @@ class SearchService:
         self, 
         query: str, 
         limit: int = 20, 
-        resource_type: Optional[str] = None
+        resource_type: Optional[str] = None,
+        peer_reviewed_only: bool = False
     ) -> Optional[Dict[str, Any]]:
         """Perform search using the library client."""
         try:
-            logger.info(f"Performing library search - query: {query}, limit: {limit}, type: {resource_type}")
+            logger.info(
+                f"Performing library search - query: {query}, limit: {limit}, "
+                f"type: {resource_type}, peer_reviewed: {peer_reviewed_only}"
+            )
             
             results = self.library_client.search(
                 query=query, 
                 limit=limit, 
                 offset=0, 
-                resource_type=resource_type
+                resource_type=resource_type,
+                peer_reviewed_only=peer_reviewed_only
             )
             
             if results:
@@ -58,13 +63,48 @@ class SearchService:
 def perform_library_search(
     query: str, 
     limit: int = 20, 
-    resource_type: Optional[str] = None
+    resource_type: Optional[str] = None,
+    peer_reviewed_only: bool = False
 ) -> Optional[Dict[str, Any]]:
     """Legacy function - delegates to SearchService for backward compatibility."""
-    from core.clients.csusb_library_client import CSUSBLibraryClient
-    client = CSUSBLibraryClient()
-    service = SearchService(client)
-    return service.search(query, limit, resource_type)
+    try:
+        from core.clients.csusb_library_client import CSUSBLibraryClient
+        client = CSUSBLibraryClient()
+        service = SearchService(client)
+        
+        # For books, we should adapt the query to find scholarly/academic books
+        # when peer_reviewed_only is requested
+        if peer_reviewed_only and resource_type and resource_type.lower() == "book":
+            # Add academic/scholarly terms to the query
+            academic_terms = ["academic", "scholarly", "research"]
+            enhanced_query = f"{query} {' OR '.join(academic_terms)}"
+            logger.info(f"Enhanced book query for peer-review: {enhanced_query}")
+            results = client.search(
+                query=enhanced_query,
+                limit=limit,
+                offset=0,
+                resource_type=resource_type,
+                peer_reviewed_only=peer_reviewed_only
+            )
+        else:
+            # Normal search for articles and other types
+            results = client.search(
+                query=query,
+                limit=limit,
+                offset=0,
+                resource_type=resource_type,
+                peer_reviewed_only=peer_reviewed_only
+            )
+        
+        if isinstance(results, dict) and results.get("docs"):
+            doc_count = len(results["docs"])
+            total = results.get("info", {}).get("total", 0)
+            logger.info(f"Search returned {doc_count} docs out of {total} total")
+            logger.info(f"First doc facets: {results['docs'][0].get('pnx', {}).get('facets', {}) if results['docs'] else 'No docs'}")
+        return results
+    except Exception as e:
+        logger.error(f"Search error: {str(e)}")
+        return {"_error": str(e)}
 
 
 # Legacy function for backward compatibility

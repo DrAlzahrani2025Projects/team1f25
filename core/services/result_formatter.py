@@ -27,6 +27,7 @@ class ResultFormatter:
         display = pnx.get("display", {})
         addata = pnx.get("addata", {})
         control = pnx.get("control", {})
+        facets = pnx.get("facets", {})
         
         # Extract basic fields
         title = ResultFormatter._get_first_value(display, "title")
@@ -42,7 +43,11 @@ class ResultFormatter:
         
         # Build discovery link
         link = ResultFormatter._build_discovery_link(doc, control)
-        
+
+        # Determine peer review status (be tolerant of variants: 'peer_reviewed', 'peer-reviewed', 'Peer Reviewed')
+        tlevel = facets.get("tlevel", [])
+        is_peer_reviewed = ResultFormatter._is_peer_reviewed_from_facets(tlevel)
+
         return {
             "title": title,
             "author": author,
@@ -53,7 +58,21 @@ class ResultFormatter:
             "issn": issn,
             "doi": doi,
             "link": link,
+            "peer_reviewed": "Yes" if is_peer_reviewed else "No",
         }
+
+    @staticmethod
+    def _is_peer_reviewed_from_facets(tlevel: List[str]) -> bool:
+        """Return True if any facet entry indicates peer-reviewed status (tolerant to variants)."""
+        if not tlevel:
+            return False
+        for item in tlevel:
+            if not item:
+                continue
+            val = item.lower().replace('-', ' ').replace('_', ' ')
+            if 'peer' in val and 'review' in val:
+                return True
+        return False
     
     @staticmethod
     def _get_first_value(data: Dict, key: str, default: str = "N/A") -> str:
