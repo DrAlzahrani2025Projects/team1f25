@@ -58,7 +58,8 @@ class CSUSBLibraryClient(ILibraryClient):
         query: str,
         limit: int = 10,
         offset: int = 0,
-        resource_type: Optional[str] = None
+        resource_type: Optional[str] = None,
+        peer_reviewed_only: bool = False
     ) -> Dict[str, Any]:
         """
         Search the library database.
@@ -68,7 +69,8 @@ class CSUSBLibraryClient(ILibraryClient):
             q=query,
             limit=limit,
             offset=offset,
-            resource_type=resource_type
+            resource_type=resource_type,
+            peer_reviewed_only=peer_reviewed_only
         )
     
     def _explore_search(
@@ -80,6 +82,7 @@ class CSUSBLibraryClient(ILibraryClient):
         query: str | None = None,
         sort: str = "rank",
         resource_type: str | None = None,
+        peer_reviewed_only: bool = False,
     ) -> Dict[str, Any]:
         """Internal method for Primo search."""
         if (not q) and query:
@@ -108,7 +111,20 @@ class CSUSBLibraryClient(ILibraryClient):
             "rapido": "true",
             "showPnx": "true",
         }
-        
+
+        # Helper to append a facet token to qInclude safely
+        def _append_facet(facet: str):
+            existing = params.get("qInclude", "")
+            if existing:
+                params["qInclude"] = existing + f";{facet}"
+            else:
+                params["qInclude"] = facet
+
+        # Add peer review filter if requested
+        if peer_reviewed_only:
+            _append_facet("facet_tlevel,exact,peer_reviewed")
+            _log.info("Adding peer review filter")
+
         # Add resource type facet filter if specified
         if resource_type:
             type_facets = {
@@ -118,7 +134,7 @@ class CSUSBLibraryClient(ILibraryClient):
                 "thesis": "dissertations",
             }
             facet_value = type_facets.get(resource_type.lower(), resource_type.lower())
-            params["qInclude"] = f"facet_rtype,exact,{facet_value}"
+            _append_facet(f"facet_rtype,exact,{facet_value}")
             _log.info(f"Adding resource type filter: {params['qInclude']}")
         
         r = self.session.get(url, params=params, timeout=self.timeout)
@@ -148,6 +164,7 @@ def explore_search(
     query: str | None = None,
     sort: str = "rank",
     resource_type: str | None = None,
+    peer_reviewed_only: bool = False,
 ) -> Dict[str, Any]:
     """Legacy function - delegates to CSUSBLibraryClient for backward compatibility."""
     client = CSUSBLibraryClient()
@@ -157,5 +174,6 @@ def explore_search(
         offset=offset,
         query=query,
         sort=sort,
-        resource_type=resource_type
+        resource_type=resource_type,
+        peer_reviewed_only=peer_reviewed_only
     )
