@@ -98,7 +98,7 @@ class ChatOrchestrator:
         date_from = params.get("date_from") if params.get("date_from") is not None else st.session_state.user_requirements.get("date_from")
         date_to = params.get("date_to") if params.get("date_to") is not None else st.session_state.user_requirements.get("date_to")
         
-        logger.info(f"Search params - query: {search_query}, limit: {limit}, type: {resource_type}, peer_reviewed: {peer_reviewed_only}")
+        logger.info(f"Search params - query: {search_query}, limit: {limit}, type: {resource_type}, peer_reviewed: {peer_reviewed_only}, date_from: {date_from}, date_to: {date_to}")
 
         # If no date information was provided, ask a clarifying question
         if date_from is None and date_to is None:
@@ -119,6 +119,7 @@ class ChatOrchestrator:
 
         # Perform search
         with st.spinner("Searching library database..."):
+            logger.info(f"Calling perform_library_search with: query={search_query}, limit={limit}, resource_type={resource_type}, peer_reviewed_only={peer_reviewed_only}, date_from={date_from}, date_to={date_to}")
             results = perform_library_search(
                 search_query, 
                 limit=limit, 
@@ -293,12 +294,25 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
             if st.session_state.get("awaiting_topic"):
                 topic = last_msg
                 st.session_state.pop("awaiting_topic", None)
-                # Save the resolved query for search and ask about peer review next
+                # Check if peer review was mentioned in this topic message
+                peer_review_keywords = ["peer review", "peer-review", "scholarly", "academic", "refereed"]
+                peer_mentioned = any(kw in topic.lower() for kw in peer_review_keywords)
+                
+                # Save the resolved query for search and ask about peer review only if not mentioned
                 st.session_state["saved_query"] = topic
-                response = "Do you want these articles to be peer-reviewed? (yes/no)"
-                st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                if peer_mentioned:
+                    # User already specified peer review preference, proceed to search
+                    search_params = orchestrator.analyzer.extract_search_parameters(
+                        [{"role": "user", "content": topic}]
+                    )
+                    orchestrator.execute_search_with_params(search_params)
+                else:
+                    # Ask about peer review if not mentioned
+                    response = "Do you want these articles to be peer-reviewed? (yes/no)"
+                    st.markdown(response)
+                    st.session_state.messages.append({"role": "assistant", "content": response})
                 return
+                
             if has_article_intent and is_not_response and "peer-reviewed?" not in last_msg:
                 # If the user input is generic (e.g. "I need articles"), ask for topic first
                 if is_generic:
@@ -308,11 +322,23 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
                     st.session_state.messages.append({"role": "assistant", "content": response})
                     return
 
-                # Otherwise treat the message as a specific query and ask about peer review
-                st.session_state["saved_query"] = last_msg
-                response = "Do you want these articles to be peer-reviewed? (yes/no)"
-                st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
+                # Check if peer review was already mentioned in the query
+                peer_review_keywords = ["peer review", "peer-review", "scholarly", "academic", "refereed"]
+                peer_mentioned = any(kw in last_msg.lower() for kw in peer_review_keywords)
+                
+                # Otherwise treat the message as a specific query
+                if peer_mentioned:
+                    # User already specified peer review preference, go directly to search
+                    search_params = orchestrator.analyzer.extract_search_parameters(
+                        conversation_history
+                    )
+                    orchestrator.execute_search_with_params(search_params)
+                else:
+                    # Ask about peer review if not mentioned
+                    st.session_state["saved_query"] = last_msg
+                    response = "Do you want these articles to be peer-reviewed? (yes/no)"
+                    st.markdown(response)
+                    st.session_state.messages.append({"role": "assistant", "content": response})
                 return
             
             # Check if we're in a topic refinement loop

@@ -145,9 +145,11 @@ class CSUSBLibraryClient(ILibraryClient):
 
         # Add date range filter if specified (year or YYYYMMDD accepted)
         if date_from is not None or date_to is not None:
+            _log.info(f"Date filter requested: date_from={date_from}, date_to={date_to}")
             # Normalize bounds using shared utility
             start_str = normalize_date_bound(date_from, True)
             end_str = normalize_date_bound(date_to, False)
+            _log.info(f"Normalized dates: start_str={start_str}, end_str={end_str}")
 
             # Clamp future dates to today
             today = _get_today_yyyymmdd()
@@ -162,15 +164,17 @@ class CSUSBLibraryClient(ILibraryClient):
                 if start_str and end_str and start_str.isdigit() and end_str.isdigit() and int(start_str) > int(end_str):
                     _log.info(f"Swapping start/end dates: {start_str} > {end_str}")
                     start_str, end_str = end_str, start_str
-            except Exception:
-                pass
+            except Exception as e:
+                _log.warning(f"Error processing dates: {e}")
 
             # Append date filter to q using the helper
             if start_str:
                 _append_to_q(f"dr_s,exact,{start_str}")
+                _log.info(f"Added start date filter: dr_s,exact,{start_str}")
             if end_str:
                 _append_to_q(f"dr_e,exact,{end_str}")
-            _log.info(f"Added date range filter, q: {params['q']}")
+                _log.info(f"Added end date filter: dr_e,exact,{end_str}")
+            _log.info(f"Final query after date filters: {params['q']}")
         
         # Log the final query before sending
         _log.info(f"Final Primo query: {params['q']}")
