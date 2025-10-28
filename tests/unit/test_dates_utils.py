@@ -3,7 +3,20 @@ from datetime import datetime
 
 import pytest
 
-from core.utils.dates import normalize_date_bound, extract_dates_from_text
+from core.utils.dates import (
+    normalize_date_bound,
+    extract_dates_from_text,
+    _extract_year_range,
+    _extract_full_date,
+    _extract_month_name_with_day_and_year,
+    _extract_month_year,
+    _extract_since_year,
+    _extract_last_n_years,
+    _extract_last_n_months,
+    _extract_last_month,
+    _extract_quarter,
+    _extract_single_year,
+)
 
 
 @pytest.mark.parametrize(
@@ -134,4 +147,133 @@ def test_extract_no_dates_return_none(text):
     """Strings with no recognizable date patterns return (None, None)."""
     d_from, d_to = extract_dates_from_text(text)
     assert d_from is None and d_to is None
+
+
+# ============================================================================
+# Tests for helper functions
+# ============================================================================
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("from 2015 to 2020", (2015, 2020)),
+        ("between 2010 and 2015", (2010, 2015)),
+        ("2015-2020", (2015, 2020)),
+        ("no range here", (None, None)),
+    ],
+)
+def test_extract_year_range_helper(text, expected):
+    """Test _extract_year_range helper function."""
+    assert _extract_year_range(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("2020-03-05", (20200305, None)),
+        ("2020/03/05", (20200305, None)),
+        ("20200305", (20200305, None)),
+        ("no date here", (None, None)),
+    ],
+)
+def test_extract_full_date_helper(text, expected):
+    """Test _extract_full_date helper function."""
+    assert _extract_full_date(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("march 5, 2020", (20200305, None)),
+        ("mar 5, 2020", (20200305, None)),
+        ("no date here", (None, None)),
+    ],
+)
+def test_extract_month_name_with_day_and_year_helper(text, expected):
+    """Test _extract_month_name_with_day_and_year helper function."""
+    assert _extract_month_name_with_day_and_year(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("mar 2020", (20200301, None)),
+        ("march 2020", (20200301, None)),
+        ("december 2020", (20201201, None)),
+        ("no date here", (None, None)),
+    ],
+)
+def test_extract_month_year_helper(text, expected):
+    """Test _extract_month_year helper function."""
+    assert _extract_month_year(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("since 2018", (2018, None)),
+        ("since 1999", (1999, None)),
+        ("no since here", (None, None)),
+    ],
+)
+def test_extract_since_year_helper(text, expected):
+    """Test _extract_since_year helper function."""
+    assert _extract_since_year(text) == expected
+
+
+def test_extract_last_n_years_helper():
+    """Test _extract_last_n_years helper function."""
+    now = datetime.utcnow()
+    d_from, d_to = _extract_last_n_years("last 2 years")
+    assert d_to == now.year
+    assert d_from == now.year - 2 + 1
+
+
+def test_extract_last_n_months_helper():
+    """Test _extract_last_n_months helper function."""
+    d_from, d_to = _extract_last_n_months("last 3 months")
+    assert isinstance(d_from, int) and isinstance(d_to, int)
+
+
+def test_extract_last_month_helper():
+    """Test _extract_last_month helper function."""
+    now = datetime.utcnow()
+    d_from, d_to = _extract_last_month("last month")
+    prev_month = now.month - 1
+    prev_year = now.year
+    if prev_month == 0:
+        prev_month = 12
+        prev_year -= 1
+    expected_start = int(f"{prev_year:04d}{prev_month:02d}01")
+    expected_end = int(now.strftime("%Y%m%d"))
+    assert d_from == expected_start and d_to == expected_end
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("q1 2018", (20180101, 20180331)),
+        ("q2 2020", (20200401, 20200631)),
+        ("q4 2019", (20191001, 20191231)),
+        ("no quarter", (None, None)),
+    ],
+)
+def test_extract_quarter_helper(text, expected):
+    """Test _extract_quarter helper function."""
+    assert _extract_quarter(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("1999", (1999, None)),
+        ("2020", (2020, None)),
+        ("1850", (None, None)),  # Before 1900 range
+        ("no year", (None, None)),
+    ],
+)
+def test_extract_single_year_helper(text, expected):
+    """Test _extract_single_year helper function."""
+    assert _extract_single_year(text) == expected
 

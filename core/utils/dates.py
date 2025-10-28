@@ -13,6 +13,178 @@ from typing import Optional, Tuple
 MIN_YEAR = 1900
 
 
+def _extract_year_range(text: str) -> Tuple[Optional[int], Optional[int]]:
+    """Extract year range patterns like '2015-2020', 'from 2015 to 2020', etc.
+    
+    Returns:
+        Tuple[Optional[int], Optional[int]]: (year_from, year_to) or (None, None).
+    """
+    patterns = [
+        r"from\s+(\d{4})\s+(?:to|-)\s+(\d{4})",
+        r"between\s+(\d{4})\s+and\s+(\d{4})",
+        r"(\d{4})\s*[-–]\s*(\d{4})",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, text)
+        if m:
+            y1, y2 = m.groups()
+            return int(y1), int(y2)
+    return None, None
+
+
+def _extract_full_date(text: str) -> Tuple[Optional[int], None]:
+    """Extract full date patterns like '2020-03-05', '2020/03/05', '20200305'.
+    
+    Returns:
+        Tuple[Optional[int], None]: (YYYYMMDD, None) or (None, None).
+    """
+    m = re.search(r"(\d{4})[\-/]?(\d{1,2})[\-/]?(\d{1,2})", text)
+    if m:
+        y, mm, dd = m.groups()
+        try:
+            return int(f"{int(y):04d}{int(mm):02d}{int(dd):02d}"), None
+        except Exception:
+            pass
+    return None, None
+
+
+def _extract_month_name_with_day_and_year(text: str) -> Tuple[Optional[int], None]:
+    """Extract 'Month Day, Year' patterns like 'March 5, 2020'.
+    
+    Returns:
+        Tuple[Optional[int], None]: (YYYYMMDD, None) or (None, None).
+    """
+    month_names = r"(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+    m = re.search(rf"{month_names}\s+(\d{{1,2}}),?\s+(\d{{4}})", text)
+    if m:
+        mon, day, yr = m.groups()
+        try:
+            try:
+                month_idx = datetime.strptime(mon, "%b").month if len(mon) == 3 else datetime.strptime(mon, "%B").month
+            except Exception:
+                month_idx = datetime.strptime(mon[:3], "%b").month
+            return int(f"{int(yr):04d}{int(month_idx):02d}{int(day):02d}"), None
+        except Exception:
+            pass
+    return None, None
+
+
+def _extract_month_year(text: str) -> Tuple[Optional[int], None]:
+    """Extract 'Month Year' patterns like 'Mar 2020', 'March 2020'.
+    
+    Returns:
+        Tuple[Optional[int], None]: (YYYYMM01, None) or (None, None).
+    """
+    month_names = r"(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+    m = re.search(rf"{month_names}\s+(\d{{4}})", text)
+    if m:
+        mon, yr = m.groups()
+        try:
+            month_idx = datetime.strptime(mon[:3], "%b").month
+            return int(f"{int(yr):04d}{int(month_idx):02d}01"), None
+        except Exception:
+            pass
+    return None, None
+
+
+def _extract_since_year(text: str) -> Tuple[Optional[int], None]:
+    """Extract 'since YYYY' patterns.
+    
+    Returns:
+        Tuple[Optional[int], None]: (YYYY, None) or (None, None).
+    """
+    m = re.search(r"since\s+(\d{4})", text)
+    if m:
+        y = int(m.group(1))
+        return y, None
+    return None, None
+
+
+def _extract_last_n_years(text: str) -> Tuple[Optional[int], Optional[int]]:
+    """Extract 'last N years' patterns.
+    
+    Returns:
+        Tuple[Optional[int], Optional[int]]: (year_from, year_to) or (None, None).
+    """
+    m = re.search(r"last\s+(\d{1,2})\s+years", text)
+    if m:
+        n = int(m.group(1))
+        now = datetime.utcnow().year
+        return now - n + 1, now
+    return None, None
+
+
+def _extract_last_n_months(text: str) -> Tuple[Optional[int], Optional[int]]:
+    """Extract 'last N months' patterns.
+    
+    Returns:
+        Tuple[Optional[int], Optional[int]]: (YYYYMM01, YYYYMMDD) or (None, None).
+    """
+    m = re.search(r"last\s+(\d{1,2})\s+months", text)
+    if m:
+        n = int(m.group(1))
+        now_dt = datetime.utcnow()
+        start_month = (now_dt.month - n + 1)
+        start_year = now_dt.year
+        while start_month <= 0:
+            start_month += 12
+            start_year -= 1
+        start = int(f"{start_year:04d}{start_month:02d}01")
+        end = int(now_dt.strftime("%Y%m%d"))
+        return start, end
+    return None, None
+
+
+def _extract_last_month(text: str) -> Tuple[Optional[int], Optional[int]]:
+    """Extract 'last month' pattern.
+    
+    Returns:
+        Tuple[Optional[int], Optional[int]]: (YYYYMM01, YYYYMMDD) or (None, None).
+    """
+    if re.search(r"last\s+month", text):
+        now_dt = datetime.utcnow()
+        mth = now_dt.month - 1
+        yr = now_dt.year
+        if mth == 0:
+            mth = 12
+            yr -= 1
+        start = int(f"{yr:04d}{mth:02d}01")
+        end = int(now_dt.strftime("%Y%m%d"))
+        return start, end
+    return None, None
+
+
+def _extract_quarter(text: str) -> Tuple[Optional[int], Optional[int]]:
+    """Extract 'Q[1-4] YYYY' patterns like 'Q1 2018'.
+    
+    Returns:
+        Tuple[Optional[int], Optional[int]]: (YYYYMM01, YYYYMM31) or (None, None).
+    """
+    m = re.search(r"q([1-4])\s*(\d{4})", text)
+    if m:
+        q, yr = m.groups()
+        q = int(q)
+        yr = int(yr)
+        quarter_map = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
+        start_m, end_m = quarter_map[q]
+        start = int(f"{yr:04d}{start_m:02d}01")
+        end = int(f"{yr:04d}{end_m:02d}31")
+        return start, end
+    return None, None
+
+
+def _extract_single_year(text: str) -> Tuple[Optional[int], None]:
+    """Extract single year mention like '1999'.
+    
+    Returns:
+        Tuple[Optional[int], None]: (YYYY, None) or (None, None).
+    """
+    m = re.search(r"\b(19|20)\d{2}\b", text)
+    if m:
+        return int(m.group(0)), None
+    return None, None
+
+
 def normalize_date_bound(value: Optional[int | str], is_start: bool) -> Optional[str]:
     """Normalize a date-like value into YYYYMMDD string suitable for queries.
 
@@ -110,121 +282,81 @@ def normalize_date_bound(value: Optional[int | str], is_start: bool) -> Optional
 def extract_dates_from_text(text: str) -> Tuple[Optional[int], Optional[int]]:
     """Heuristic extraction of date_from and date_to from natural text.
 
-    Returns a tuple (date_from, date_to) where values are integers either
-    YYYY or YYYYMMDD (or full YYYYMMDD) depending on what was found.
+    Supports multiple date format patterns:
+    - Full dates: "2020-03-05", "March 5, 2020", "20200305"
+    - Ranges: "from 2015 to 2020", "2015-2020", "between 2010 and 2015"
+    - Relative: "since 2018", "last 3 years", "last month", "Q1 2020"
+    - Month-year: "Mar 2020", "March 2020"
+    - Single year: "1999"
+
+    Examples:
+        >>> extract_dates_from_text("papers from 2015 to 2020")
+        (2015, 2020)
+        >>> extract_dates_from_text("since 2018")
+        (2018, None)
+        >>> extract_dates_from_text("last 3 years")
+        (2023, 2025)  # varies by current year
+
+    Returns:
+        Tuple[Optional[int], Optional[int]]: (date_from, date_to) where values are
+        integers either YYYY or YYYYMMDD (or full YYYYMMDD) depending on what was found,
+        or None if not found.
     """
     if not text:
         return None, None
 
     text_low = text.lower()
 
-    # Range like: from 2015 to 2020, between 2010 and 2015, 2015-2020
-    m = re.search(r"from\s+(\d{4})\s+(?:to|-)\s+(\d{4})", text_low)
-    if not m:
-        m = re.search(r"between\s+(\d{4})\s+and\s+(\d{4})", text_low)
-    if not m:
-        m = re.search(r"(\d{4})\s*[-–]\s*(\d{4})", text_low)
-    if m:
-        y1, y2 = m.groups()
-        return int(y1), int(y2)
+    # Try each pattern helper in priority order
+    # Range patterns first (highest priority to avoid mismatches)
+    result = _extract_year_range(text_low)
+    if result != (None, None):
+        return result
 
-    # Full date: YYYY-MM-DD, YYYY/MM/DD, YYYYMMDD
-    m = re.search(r"(\d{4})[\-/]?(\d{1,2})[\-/]?(\d{1,2})", text_low)
-    if m:
-        y, mm, dd = m.groups()
-        try:
-            return int(f"{int(y):04d}{int(mm):02d}{int(dd):02d}"), None
-        except Exception:
-            pass
+    # Full date patterns (before month names to avoid partial matches)
+    result = _extract_full_date(text_low)
+    if result != (None, None):
+        return result
 
-    # Month name formats: 'March 2020', 'Mar 2020', 'March 5, 2020'
-    month_names = r"(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
-    m = re.search(rf"{month_names}\s+(\d{{1,2}}),?\s+(\d{{4}})", text_low)
-    if m:
-        mon, day, yr = m.groups()
-        try:
-            try:
-                month_idx = datetime.strptime(mon, "%b").month if len(mon) == 3 else datetime.strptime(mon, "%B").month
-            except Exception:
-                month_idx = datetime.strptime(mon[:3], "%b").month
-            return int(f"{int(yr):04d}{int(month_idx):02d}{int(day):02d}"), None
-        except Exception:
-            pass
+    # Month with day and year (before month-only to avoid partial matches)
+    result = _extract_month_name_with_day_and_year(text_low)
+    if result != (None, None):
+        return result
 
     # Month + year (no day)
-    m = re.search(rf"{month_names}\s+(\d{{4}})", text_low)
-    if m:
-        mon, yr = m.groups()
-        try:
-            month_idx = datetime.strptime(mon[:3], "%b").month
-            return int(f"{int(yr):04d}{int(month_idx):02d}01"), None
-        except Exception:
-            pass
+    result = _extract_month_year(text_low)
+    if result != (None, None):
+        return result
 
-    # Range like: from 2015 to 2020, between 2010 and 2015, 2015-2020
-    m = re.search(r"from\s+(\d{4})\s+(?:to|-)\s+(\d{4})", text_low)
-    if not m:
-        m = re.search(r"between\s+(\d{4})\s+and\s+(\d{4})", text_low)
-    if not m:
-        m = re.search(r"(\d{4})\s*[-–]\s*(\d{4})", text_low)
-    if m:
-        y1, y2 = m.groups()
-        return int(y1), int(y2)
-
-    # Since 2018
-    m = re.search(r"since\s+(\d{4})", text_low)
-    if m:
-        y = int(m.group(1))
-        return y, None
+    # Since YYYY
+    result = _extract_since_year(text_low)
+    if result != (None, None):
+        return result
 
     # Last N years
-    m = re.search(r"last\s+(\d{1,2})\s+years", text_low)
-    if m:
-        n = int(m.group(1))
-        now = datetime.utcnow().year
-        return now - n + 1, now
+    result = _extract_last_n_years(text_low)
+    if result != (None, None):
+        return result
 
     # Last N months or 'last month'
-    m = re.search(r"last\s+(\d{1,2})\s+months", text_low)
-    if m:
-        n = int(m.group(1))
-        now_dt = datetime.utcnow()
-        start_month = (now_dt.month - n + 1)
-        start_year = now_dt.year
-        while start_month <= 0:
-            start_month += 12
-            start_year -= 1
-        start = int(f"{start_year:04d}{start_month:02d}01")
-        end = int(now_dt.strftime("%Y%m%d"))
-        return start, end
+    result = _extract_last_n_months(text_low)
+    if result != (None, None):
+        return result
 
-    if re.search(r"last\s+month", text_low):
-        now_dt = datetime.utcnow()
-        mth = now_dt.month - 1
-        yr = now_dt.year
-        if mth == 0:
-            mth = 12
-            yr -= 1
-        start = int(f"{yr:04d}{mth:02d}01")
-        end = int(now_dt.strftime("%Y%m%d"))
-        return start, end
+    # Last month (specific pattern)
+    result = _extract_last_month(text_low)
+    if result != (None, None):
+        return result
 
     # Quarter like Q1 2018
-    m = re.search(r"q([1-4])\s*(\d{4})", text_low)
-    if m:
-        q, yr = m.groups()
-        q = int(q)
-        yr = int(yr)
-        quarter_map = {1: (1, 3), 2: (4, 6), 3: (7, 9), 4: (10, 12)}
-        start_m, end_m = quarter_map[q]
-        start = int(f"{yr:04d}{start_m:02d}01")
-        end = int(f"{yr:04d}{end_m:02d}31")
-        return start, end
+    result = _extract_quarter(text_low)
+    if result != (None, None):
+        return result
 
     # Single year mention
-    m = re.search(r"\b(19|20)\d{2}\b", text_low)
-    if m:
-        return int(m.group(0)), None
+    result = _extract_single_year(text_low)
+    if result != (None, None):
+        return result
 
     return None, None
 
