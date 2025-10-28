@@ -119,16 +119,17 @@ class CSUSBLibraryClient(ILibraryClient):
             "showPnx": "true",
         }
 
-        # Helper to append a filter to the q parameter
-        def _append_to_q(filter_clause: str):
-            params_q = params.get("q", "")
-            if params_q.endswith(";"):
-                params_q = params_q.rstrip(";")
-            params["q"] = params_q + f";{filter_clause}" if params_q else filter_clause
+        # Helper to append a facet token to qInclude safely
+        def _append_facet(facet: str):
+            existing = params.get("qInclude", "")
+            if existing:
+                params["qInclude"] = existing + f";{facet}"
+            else:
+                params["qInclude"] = facet
 
         # Add peer review filter if requested
         if peer_reviewed_only:
-            _append_to_q("facet_tlevel,exact,peer_reviewed")
+            _append_facet("facet_tlevel,exact,peer_reviewed")
             _log.info("Adding peer review filter")
 
         # Add resource type facet filter if specified
@@ -140,8 +141,8 @@ class CSUSBLibraryClient(ILibraryClient):
                 "thesis": "dissertations",
             }
             facet_value = type_facets.get(resource_type.lower(), resource_type.lower())
-            _append_to_q(f"facet_rtype,exact,{facet_value}")
-            _log.info(f"Adding resource type filter: facet_rtype,exact,{facet_value}")
+            _append_facet(f"facet_rtype,exact,{facet_value}")
+            _log.info(f"Adding resource type filter: {params['qInclude']}")
 
         # Add date range filter if specified (year or YYYYMMDD accepted)
         if date_from is not None or date_to is not None:
@@ -165,15 +166,13 @@ class CSUSBLibraryClient(ILibraryClient):
             except Exception:
                 pass
 
-            # Append date filter to q using the helper
-            if start_str:
-                _append_to_q(f"dr_s,exact,{start_str}")
-            if end_str:
-                _append_to_q(f"dr_e,exact,{end_str}")
-            _log.info(f"Added date range filter, q: {params['q']}")
-        
-        # Log the final query before sending
-        _log.info(f"Final Primo query: {params['q']}")
+            # Append date filter to the q parameter
+            params_q = params.get("q", "")
+            if params_q.endswith(";"):
+                params_q = params_q.rstrip(";")
+            date_segment = f"dr_s,exact,{start_str},AND;dr_e,exact,{end_str};"
+            params["q"] = params_q + ";" + date_segment if params_q else date_segment
+            _log.info(f"Adding date range filter to q: {params['q']}")
         
         r = self.session.get(url, params=params, timeout=self.timeout)
         _log.info("Primo explore_search URL: %s", r.url)
