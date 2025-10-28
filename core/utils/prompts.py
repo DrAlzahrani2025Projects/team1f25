@@ -86,79 +86,47 @@ IMPORTANT: Stay strictly within the scope of scholarly research assistance. Redi
 Conversation:
 {conversation_text}
 
-EXTRACTION RULES:
-1. "query": Extract ONLY the main research topic/search terms. REMOVE all resource types, peer-review keywords, and date references.
-   Examples of what to REMOVE: "articles", "peer reviewed", "peer-reviewed", "from 2025", "since 2020", "between 2015 and 2020"
-   
-2. "limit": Number of results requested. Default to 10 if not specified.
+Extract:
+1. "query": The main search terms (simple, no Boolean operators)
+2. "limit": Number of results requested (default: 10 if not specified)
+3. "resource_type": Type of resource to search for
+4. "date_from": (optional) Lower bound for publication date. Use YYYY or YYYYMMDD or null.
+5. "date_to": (optional) Upper bound for publication date. Use YYYY or YYYYMMDD or null.
+6. "peer_reviewed_only": Whether to filter for peer-reviewed resources (yes/no)
 
-3. "resource_type": Type of resource (article/book/journal/dissertations). Set to null if not specified.
-   - "article" = journal articles, scholarly articles
-   - "book" = books, ebooks  
-   - "journal" = journal publications
-   - "dissertations" = dissertations, theses
+Resource types:
+- "article" - for scholarly/journal articles (when user says "articles" or "journal articles")
+- "book" - for books or ebooks
+- "journal" - for journal publications (when user says "journals" as the publication, NOT "journal articles")
+- "dissertations" - for dissertations and theses/thesis
+- null - if not specified
 
-4. "date_from": Lower bound for publication year. Extract ONLY the EARLIEST year mentioned.
-   - "from 2025" → 2025
-   - "since 2018" → 2018
-   - "2015-2023" → 2015
-   - "between 2010 and 2018" → 2010
-   - Not mentioned → null
+IMPORTANT: 
+- "journal articles" = "article" (articles published IN journals)
+- "journals" = "journal" (the journal publication itself)
 
-5. "date_to": Upper bound for publication year. Extract ONLY the LATEST year mentioned.
-   - "from 2025" → null (open-ended)
-   - "until 2023" → 2023
-   - "2015-2023" → 2023
-   - "between 2010 and 2018" → 2018
-   - Not mentioned → null
-
-6. "peer_reviewed_only": Boolean. true if "peer reviewed", "peer-reviewed", "scholarly", "academic", "refereed" mentioned. false otherwise.
-
-CRITICAL EXAMPLES FOR DATES:
-
-User: "I need articles on viruses from 2025"
-QUERY PART: "viruses"
-DATE PART: "from 2025"
-→ {{"query": "viruses", "resource_type": "article", "date_from": 2025, "date_to": null, "peer_reviewed_only": false}}
-
-User: "peer reviewed articles on diabetes 2020-2024"
-QUERY PART: "diabetes"
-DATE PART: "2020-2024"
-→ {{"query": "diabetes", "resource_type": "article", "date_from": 2020, "date_to": 2024, "peer_reviewed_only": true}}
-
-User: "give me research papers since 2018"
-QUERY PART: "research papers" → CLEAN TO: "papers"
-DATE PART: "since 2018"
-→ {{"query": "papers", "resource_type": null, "date_from": 2018, "date_to": null, "peer_reviewed_only": false}}
-
-EXAMPLES:
+Examples:
 
 User: "I need 5 articles about machine learning in healthcare"
-{{"query": "machine learning healthcare", "limit": 5, "resource_type": "article", "date_from": null, "date_to": null, "peer_reviewed_only": false}}
+{{"query": "machine learning healthcare", "limit": 5, "resource_type": "article", "peer_reviewed": "false"}}
 
 User: "Find 10 books on climate change"
-{{"query": "climate change", "limit": 10, "resource_type": "book", "date_from": null, "date_to": null, "peer_reviewed_only": false}}
+{{"query": "climate change", "limit": 10, "resource_type": "book", "peer_reviewed": "false"}}
 
-User: "Show me research on diabetes from 2020"
-{{"query": "diabetes", "limit": 10, "resource_type": null, "date_from": 2020, "date_to": null, "peer_reviewed_only": false}}
+User: "Show me research on diabetes"
+{{"query": "diabetes", "limit": 10, "resource_type": null, "peer_reviewed": "false"}}
 
-User: "I want peer reviewed articles about AI since 2018"
-{{"query": "artificial intelligence", "limit": 10, "resource_type": "article", "date_from": 2018, "date_to": null, "peer_reviewed_only": true}}
+User: "I want 3 journal articles about AI"
+{{"query": "artificial intelligence", "limit": 3, "resource_type": "article", "peer_reviewed": "false"}}
 
-User: "Give me any peer reviewed articles on viruses from 2025"
-{{"query": "viruses", "limit": 10, "resource_type": "article", "date_from": 2025, "date_to": null, "peer_reviewed_only": true}}
+User: "I need 5 journals about machine learning in healthcare"
+{{"query": "machine learning healthcare", "limit": 5, "resource_type": "journal", "peer_reviewed": "false"}}
 
-User: "I need scholarly research on robotics between 2020 and 2024"
-{{"query": "robotics", "limit": 10, "resource_type": null, "date_from": 2020, "date_to": 2024, "peer_reviewed_only": true}}
+User: "Get me 7 scholarly articles on robotics"
+{{"query": "robotics", "limit": 7, "resource_type": "article", "peer_reviewed": "false"}}
 
-User: "Find peer-reviewed journal articles about climate from 2015-2023"
-{{"query": "climate", "limit": 10, "resource_type": "article", "date_from": 2015, "date_to": 2023, "peer_reviewed_only": true}}
-
-User: "Get me 7 scholarly articles on robotics since 2018"
-{{"query": "robotics", "limit": 7, "resource_type": "article", "date_from": 2018, "date_to": null, "peer_reviewed_only": true}}
-
-User: "Find theses on quantum computing with peer review only from 2015 to 2022"
-{{"query": "quantum computing", "limit": 10, "resource_type": "dissertations", "date_from": 2015, "date_to": 2022, "peer_reviewed_only": true}}
+User: "Find theses on quantum computing with peer review only"
+{{"query": "quantum computing", "limit": 10, "resource_type": "dissertations", "peer_reviewed": "true"}}
 
 Respond with ONLY valid JSON, nothing else."""
     
