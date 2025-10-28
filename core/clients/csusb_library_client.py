@@ -7,7 +7,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from core.interfaces import ILibraryClient
 from core.utils.logging_utils import get_logger
-from core.utils.dates import normalize_date_bound
+from core.utils.dates import normalize_date_bound, _get_today_yyyymmdd
 
 PRIMO_PUBLIC_BASE = os.getenv("PRIMO_PUBLIC_BASE", "https://csu-sb.primo.exlibrisgroup.com/primaws/rest/pub")
 PRIMO_VID   = os.getenv("PRIMO_VID",   "01CALS_USB:01CALS_USB")
@@ -130,14 +130,12 @@ class CSUSBLibraryClient(ILibraryClient):
 
         # Add date range filter if specified (year or YYYYMMDD accepted)
         if date_from is not None or date_to is not None:
-            from datetime import datetime
-
             # Normalize bounds using shared utility
             start_str = normalize_date_bound(date_from, True)
             end_str = normalize_date_bound(date_to, False)
 
             # Clamp future dates to today
-            today = datetime.utcnow().strftime("%Y%m%d")
+            today = _get_today_yyyymmdd()
             try:
                 if end_str and end_str.isdigit() and int(end_str) > int(today):
                     _log.info(f"Clamping end date {end_str} to today {today}")

@@ -279,6 +279,17 @@ def normalize_date_bound(value: Optional[int | str], is_start: bool) -> Optional
     return padded
 
 
+def _get_today_yyyymmdd() -> str:
+    """Get today's date in YYYYMMDD format.
+    
+    Centralized helper to avoid duplication across modules.
+    
+    Returns:
+        str: Today's date as YYYYMMDD (e.g., "20251027").
+    """
+    return datetime.utcnow().strftime("%Y%m%d")
+
+
 def extract_dates_from_text(text: str) -> Tuple[Optional[int], Optional[int]]:
     """Heuristic extraction of date_from and date_to from natural text.
 
