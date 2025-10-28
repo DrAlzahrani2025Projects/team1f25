@@ -45,6 +45,7 @@ class ResultFormatter:
         # Build discovery link
         link = ResultFormatter._build_discovery_link(doc, control)
         
+        
         return {
             "title": title,
             "author": author,
@@ -117,7 +118,6 @@ class ResultFormatter:
     @staticmethod
     def format_table_data(docs: List[Dict]) -> List[Dict[str, Any]]:
         """Format documents for table display."""
-        logger.debug("format_table_data - formatting %d docs", len(docs))
         table_data = []
         for idx, doc in enumerate(docs, 1):
             article = ResultFormatter.parse_document(doc)

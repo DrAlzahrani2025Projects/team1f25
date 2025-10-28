@@ -88,6 +88,10 @@ class GroqClient(ILLMClient):
         """
         Non-streaming chat completion. Returns assistant message text.
         """
+        # Sanity-check input: empty user content is considered invalid and should
+        # raise immediately rather than making a network call.
+        if isinstance(content, str) and not content.strip():
+            raise ValueError("Empty content provided to GroqClient.chat()")
         messages = _as_messages(content, system)
         payload: Dict[str, Any] = dict(
             model=self.model,
@@ -109,7 +113,14 @@ class GroqClient(ILLMClient):
             first_choice = choices[0]
             message = getattr(first_choice, "message", None)
             content_text = getattr(message, "content", "") if message else ""
-            return (content_text or "").strip()
+            content_text = (content_text or "").strip()
+            if not content_text:
+                # Treat empty assistant content as an error: upstream filters or malformed
+                # responses may return no text; callers expect an exception in that case.
+                raise RuntimeError(
+                    "Groq chat() returned empty content — response may have been blocked or is malformed."
+                )
+            return content_text
         except Exception as e:
             raise RuntimeError(f"Groq chat() failed: {e}") from e
 

@@ -60,16 +60,33 @@ class ChatOrchestrator:
         search_query = params.get("query", "research")
         limit = params.get("limit", 10)
         resource_type = params.get("resource_type")
+        # Date filters: prefer explicit LLM-extracted params, else use sidebar selections
+        date_from = params.get("date_from") if params.get("date_from") is not None else st.session_state.user_requirements.get("date_from")
+        date_to = params.get("date_to") if params.get("date_to") is not None else st.session_state.user_requirements.get("date_to")
         
         logger.info(f"Search params - query: {search_query}, limit: {limit}, type: {resource_type}")
-        
+
+        # If no date information was provided, ask a clarifying question
+        if date_from is None and date_to is None:
+            clarifying = (
+                "When would you like the articles from? "
+                "You can answer with examples like: 'last 5 years', '2015-2018', 'since 2019', or 'any time'."
+            )
+            st.markdown(clarifying)
+            st.session_state.messages.append({"role": "assistant", "content": clarifying})
+            # store pending conversation and params so we can continue after clarification
+            st.session_state.pending_conversation = conversation_history
+            st.session_state.pending_search_params = params
+            st.session_state.conversation_stage = "awaiting_date_range"
+            return
+
         # Show search message
         self._display_search_message(search_query, limit, resource_type)
-        
+
         # Perform search
         with st.spinner("Searching library database..."):
-            results = perform_library_search(search_query, limit=limit, resource_type=resource_type)
-        
+            results = perform_library_search(search_query, limit=limit, resource_type=resource_type, date_from=date_from, date_to=date_to)
+
         # Handle results
         self._handle_search_results(results, search_query, resource_type)
     
@@ -101,10 +118,8 @@ class ChatOrchestrator:
             # No results found
             self._handle_no_results(query, resource_type)
         else:
-            # Success: store results and the search query in session state so the UI
-            # can display the searched keyword above the results table.
+            # Success
             st.session_state.search_results = results
-            st.session_state.last_search_query = query
             st.rerun()
     
     def _handle_search_error(self):
@@ -133,33 +148,56 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
     Handle user message and generate appropriate response.
     Simplified to delegate to ChatOrchestrator.
     """
-    # Add user message
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    logger.debug("handle_user_message - received prompt (len=%d): %s", len(prompt or ""), prompt)
-    with st.chat_message("user"):
-        st.markdown(prompt)
-    
     # Create orchestrator
     orchestrator = ChatOrchestrator(groq_client)
-    
+
+    # If we're awaiting a date range clarification, treat this message as the date answer
+    if st.session_state.get("conversation_stage") == "awaiting_date_range":
+        # Add user message
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+        # Parse the user's short reply for dates using the analyzer heuristics
+        date_params = orchestrator.analyzer.extract_date_parameters(prompt)
+        # Update session-level user requirements so execute_search can pick them up
+        if "date_from" in date_params:
+            st.session_state.user_requirements["date_from"] = date_params.get("date_from")
+        if "date_to" in date_params:
+            st.session_state.user_requirements["date_to"] = date_params.get("date_to")
+
+        # reset awaiting state and resume the pending search
+        pending_conv = st.session_state.pop("pending_conversation", None)
+        st.session_state.pop("pending_search_params", None)
+        st.session_state.conversation_stage = "initial"
+
+        # Resume the search using the stored pending conversation context
+        with st.chat_message("assistant"):
+            with st.spinner("Searching with your date range..."):
+                orchestrator.execute_search(pending_conv or st.session_state.messages.copy())
+        return
+
+    # Add user message
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
     # Process message
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             conversation_history = st.session_state.messages.copy()
-            
+
             # Check if should search
             if orchestrator.analyzer.should_trigger_search(prompt):
-                logger.debug("User input indicates a search should be triggered")
                 orchestrator.execute_search(conversation_history)
                 return
-            
+
             # Get AI response
             ai_response = orchestrator.get_conversation_response(conversation_history)
             logger.info(f"AI response: {ai_response}")
-            
+
             # Check if ready to search
             if "READY_TO_SEARCH" in ai_response:
-                logger.debug("AI signaled READY_TO_SEARCH")
                 orchestrator.execute_search(conversation_history)
             else:
                 # Continue conversation

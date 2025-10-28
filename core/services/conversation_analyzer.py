@@ -5,7 +5,9 @@ Follows SRP - Single Responsibility: Analyze user conversations.
 import json
 from typing import Dict, List, Optional
 from core.interfaces import ILLMClient, IPromptProvider
+from core.utils.dates import extract_dates_from_text
 from core.utils.logging_utils import get_logger
+# Keep heuristics in ConversationAnalyzer (SRP). Shared normalization lives in core.utils.dates
 
 logger = get_logger(__name__)
 
@@ -57,6 +59,18 @@ class ConversationAnalyzer:
             
             # Parse JSON
             params = json.loads(response)
+            # Normalize and ensure date fields exist
+            date_from = params.get("date_from") if isinstance(params, dict) else None
+            date_to = params.get("date_to") if isinstance(params, dict) else None
+            params.setdefault("date_from", date_from if date_from is not None else None)
+            params.setdefault("date_to", date_to if date_to is not None else None)
+            # If LLM did not provide dates, attempt heuristic extraction from text
+            if params.get("date_from") is None and params.get("date_to") is None:
+                d_from, d_to = self._extract_dates_from_text(conversation_text)
+                if d_from is not None:
+                    params["date_from"] = d_from
+                if d_to is not None:
+                    params["date_to"] = d_to
             logger.info(f"Extracted parameters: {params}")
             return params
             
@@ -69,9 +83,29 @@ class ConversationAnalyzer:
         """Fallback parameter extraction when AI fails."""
         user_messages = [msg["content"] for msg in conversation_history if msg["role"] == "user"]
         last_message = user_messages[-1] if user_messages else "research"
-        
+        # Also attempt to extract dates heuristically from the last message(s)
+        d_from, d_to = self._extract_dates_from_text("\n".join(user_messages))
+
         return {
             "query": last_message,
             "limit": 10,
-            "resource_type": None
+            "resource_type": None,
+            "date_from": d_from,
+            "date_to": d_to
         }
+
+    def _extract_dates_from_text(self, text: str) -> tuple[Optional[int], Optional[int]]:
+        """Delegate to shared utility for heuristic extraction.
+
+        Returns tuple (date_from, date_to) where each value is an int (YYYY or YYYYMMDD)
+        or None if not found.
+        """
+        return extract_dates_from_text(text)
+
+    def extract_date_parameters(self, text: str) -> dict:
+        """Public helper to extract date_from/date_to from a short text reply.
+
+        Returns a dict: {"date_from": Optional[int], "date_to": Optional[int]}.
+        """
+        d_from, d_to = self._extract_dates_from_text(text)
+        return {"date_from": d_from, "date_to": d_to}

@@ -20,30 +20,34 @@ class SearchService:
         self.formatter = formatter or ResultFormatter()
     
     def search(
-        self, 
-        query: str, 
-        limit: int = 20, 
-        resource_type: Optional[str] = None
+        self,
+        query: str,
+        limit: int = 20,
+        resource_type: Optional[str] = None,
+        date_from: Optional[int] = None,
+        date_to: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """Perform search using the library client."""
         try:
             logger.info(f"Performing library search - query: {query}, limit: {limit}, type: {resource_type}")
-            logger.debug("SearchService.search - preparing to call library_client.search with params: %s", {"query": query, "limit": limit, "resource_type": resource_type})
             
+            # Pass through optional date filters if supported by the client
+            # Accept date_from/date_to as attributes on the SearchService call via kwargs
+            # to keep backward compatibility.
+            # If caller provided date_from/date_to as kwargs, use them; else None.
             results = self.library_client.search(
-                query=query, 
-                limit=limit, 
-                offset=0, 
-                resource_type=resource_type
+                query=query,
+                limit=limit,
+                offset=0,
+                resource_type=resource_type,
+                date_from=date_from,
+                date_to=date_to,
             )
-
-            logger.debug("SearchService.search - raw results received (type=%s)", type(results))
             
             if results:
                 doc_count = len(results.get("docs", []))
                 total_results = results.get("info", {}).get("total", 0)
                 logger.info(f"Search returned {doc_count} docs, total available: {total_results}")
-                logger.debug("SearchService.search - sample results keys: %s", list(results.keys()))
             else:
                 logger.warning("Search returned None or empty results")
                 
@@ -60,15 +64,17 @@ class SearchService:
 
 # Legacy function for backward compatibility - delegates to new service
 def perform_library_search(
-    query: str, 
-    limit: int = 20, 
-    resource_type: Optional[str] = None
+    query: str,
+    limit: int = 20,
+    resource_type: Optional[str] = None,
+    date_from: Optional[int] = None,
+    date_to: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
     """Legacy function - delegates to SearchService for backward compatibility."""
     from core.clients.csusb_library_client import CSUSBLibraryClient
     client = CSUSBLibraryClient()
     service = SearchService(client)
-    return service.search(query, limit, resource_type)
+    return service.search(query, limit, resource_type, date_from=date_from, date_to=date_to)
 
 
 # Legacy function for backward compatibility
