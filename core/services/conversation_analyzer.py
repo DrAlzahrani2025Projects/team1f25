@@ -161,6 +161,17 @@ class ConversationAnalyzer:
             date_to = params.get("date_to") if isinstance(params, dict) else None
             params.setdefault("date_from", date_from if date_from is not None else None)
             params.setdefault("date_to", date_to if date_to is not None else None)
+            
+            # Normalize peer_reviewed_only to boolean (LLM might return string)
+            if "peer_reviewed_only" in params:
+                val = params["peer_reviewed_only"]
+                if isinstance(val, str):
+                    params["peer_reviewed_only"] = val.lower() in ["true", "yes", "1"]
+                else:
+                    params["peer_reviewed_only"] = bool(val)
+            else:
+                params["peer_reviewed_only"] = False
+            
             # If LLM did not provide dates, attempt heuristic extraction from text
             if params.get("date_from") is None and params.get("date_to") is None:
                 d_from, d_to = self._extract_dates_from_text(conversation_text)
@@ -193,22 +204,40 @@ class ConversationAnalyzer:
             "thesis": ["thesis", "dissertation"]
         }
         
-        # Process messages in reverse order to prioritize recent context
+        # First pass: extract resource type from USER messages FIRST (most recent), then assistant
+        # Prioritize explicit resource type mentions
         for msg in reversed(user_messages):
-            # Skip single-word resource type responses
-            if msg.strip().lower() in ["articles", "books", "journals", "thesis"]:
+            msg_lower = msg.lower()
+            for rtype, keywords in resource_types.items():
+                if any(kw in msg_lower for kw in keywords):
+                    resource_type = rtype
+                    logger.info(f"Detected resource type '{rtype}' from USER message: {msg[:50]}")
+                    break
+            if resource_type:
+                break
+        
+        # If not found in user messages, check assistant messages
+        if not resource_type:
+            for msg in reversed(assistant_messages):
+                msg_lower = msg.lower()
+                for rtype, keywords in resource_types.items():
+                    if any(kw in msg_lower for kw in keywords):
+                        resource_type = rtype
+                        logger.info(f"Detected resource type '{rtype}' from ASSISTANT message: {msg[:50]}")
+                        break
+                if resource_type:
+                    break
+        
+        # Second pass: extract query from context
+        for msg in reversed(user_messages):
+            # Skip single-word resource type responses like "articles", "books", etc.
+            msg_stripped = msg.strip().lower()
+            if msg_stripped in ["articles", "books", "journals", "thesis", "yes", "no"]:
                 continue
                 
             # Add non-empty message to query parts
             if msg.strip():
                 query_parts.append(msg.strip())
-                
-            # Look for resource type
-            if not resource_type:
-                for rtype, keywords in resource_types.items():
-                    if any(kw in msg for kw in keywords):
-                        resource_type = rtype
-                        break
             
             # Break after finding first substantial query
             if query_parts:
@@ -227,15 +256,6 @@ class ConversationAnalyzer:
                                 break
                     if query_parts:
                         break
-        
-        resource_type = None
-        for msg in user_messages + assistant_messages:
-            for rtype, keywords in resource_types.items():
-                if any(kw in msg for kw in keywords):
-                    resource_type = rtype
-                    break
-            if resource_type:
-                break
         
         # Clean and build the final query
         final_query = " ".join(query_parts) if query_parts else (user_messages[-1] if user_messages else "research")
@@ -264,33 +284,39 @@ class ConversationAnalyzer:
         ]
         negative_markers = ["not", "no", "without", "non-", "non ", "exclude"]
         
-        for msg in user_messages + assistant_messages:
+        # First, check for explicit yes/no to peer-review question
+        for i, msg in enumerate(assistant_messages):
             msg_lower = msg.lower()
-            
-            # First check for negatives
-            has_negative = any(marker in msg_lower for marker in negative_markers)
-            
-            # Then check for peer review keywords
-            has_peer_review = any(kw in msg_lower for kw in peer_review_keywords)
-            
-            if has_peer_review:
-                # If we find both negative marker and peer review keyword, it means NOT peer reviewed
-                # If we only find peer review keyword, it means peer reviewed is requested
-                peer_reviewed = not has_negative
-                break
-                
-            # Check for explicit yes/no to peer-review question
             if "peer" in msg_lower and "review" in msg_lower and "?" in msg_lower:
-                # Look for user's answer in next message
-                idx = assistant_messages.index(msg)
-                if idx < len(user_messages) - 1:
-                    answer = user_messages[idx + 1].lower()
+                # Look for user's answer in the corresponding user message
+                if i < len(user_messages):
+                    answer = user_messages[i].lower()
                     if "yes" in answer and not any(neg in answer for neg in negative_markers):
                         peer_reviewed = True
+                        logger.info(f"User said YES to peer-reviewed question")
                         break
                     elif "no" in answer or any(neg in answer for neg in negative_markers):
                         peer_reviewed = False
+                        logger.info(f"User said NO to peer-reviewed question")
                         break
+        
+        # If no explicit answer found, check for peer review keywords in all messages
+        if not peer_reviewed:
+            for msg in user_messages + assistant_messages:
+                msg_lower = msg.lower()
+                
+                # First check for negatives
+                has_negative = any(marker in msg_lower for marker in negative_markers)
+                
+                # Then check for peer review keywords
+                has_peer_review = any(kw in msg_lower for kw in peer_review_keywords)
+                
+                if has_peer_review:
+                    # If we find both negative marker and peer review keyword, it means NOT peer reviewed
+                    # If we only find peer review keyword, it means peer reviewed is requested
+                    peer_reviewed = not has_negative
+                    logger.info(f"Detected peer-review intent from keywords: peer_reviewed={peer_reviewed}")
+                    break
         
         # Also attempt to extract dates heuristically from all user messages
         d_from, d_to = self._extract_dates_from_text("\n".join(user_messages))
