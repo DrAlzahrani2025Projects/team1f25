@@ -6,6 +6,9 @@ Refactored to follow SRP - each function has a single, clear purpose.
 import streamlit as st
 from typing import Dict, Any
 from core.services.result_formatter import ResultFormatter
+from core.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 
 def render_sidebar():
@@ -51,6 +54,7 @@ def display_results_table(results: Dict[str, Any]):
     """Display search results in a formatted table using ResultFormatter."""
     docs = results.get("docs", [])
     total_available = results.get("info", {}).get("total", 0)
+    logger.debug("display_results_table - called with %d docs (total available: %s)", len(docs), total_available)
     
     if not docs:
         st.warning("No results found. Try adjusting your search criteria.")
@@ -63,6 +67,7 @@ def display_results_table(results: Dict[str, Any]):
     table_data = ResultFormatter.format_table_data(docs)
     
     # Display as dataframe with proper configuration
+    logger.debug("display_results_table - prepared table_data rows=%d", len(table_data))
     st.dataframe(
         table_data,
         width='stretch',
@@ -100,6 +105,13 @@ def display_search_results_section():
         with st.container():
             st.divider()
             st.subheader("🔍 Search Results")
+            # If we have a stored search query, show it above the table so users
+            # can see which keyword was used for the displayed results.
+            last_query = st.session_state.get("last_search_query")
+            if last_query:
+                logger.debug("display_search_results_section - showing last_search_query=%s", last_query)
+                st.markdown(f"**Search keyword:** {last_query}")
+
             display_results_table(st.session_state.search_results)
 
 
