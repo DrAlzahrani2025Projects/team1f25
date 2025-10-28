@@ -57,7 +57,6 @@ class ResultFormatter:
             "doi": doi,
             "link": link,
         }
-        }
     
     @staticmethod
     def _get_first_value(data: Dict, key: str, default: str = "N/A") -> str:
