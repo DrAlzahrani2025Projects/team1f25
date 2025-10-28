@@ -27,6 +27,8 @@ class ResultFormatter:
         display = pnx.get("display", {})
         addata = pnx.get("addata", {})
         control = pnx.get("control", {})
+        record_id = ResultFormatter._get_first_value(control, "recordid", "")
+        logger.debug("parse_document - parsing doc recordid=%s", record_id)
         
         # Extract basic fields
         title = ResultFormatter._get_first_value(display, "title")
@@ -43,6 +45,7 @@ class ResultFormatter:
         # Build discovery link
         link = ResultFormatter._build_discovery_link(doc, control)
         
+        
         return {
             "title": title,
             "author": author,
@@ -53,6 +56,7 @@ class ResultFormatter:
             "issn": issn,
             "doi": doi,
             "link": link,
+        }
         }
     
     @staticmethod
