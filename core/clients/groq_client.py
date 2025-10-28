@@ -2,9 +2,6 @@
 import os
 from typing import Any, Dict, Iterable, List, Optional, Union
 from core.interfaces import ILLMClient
-from core.utils.logging_utils import get_logger
-
-logger = get_logger(__name__)
 
 def _as_messages(
     content: Union[str, List[Dict[str, str]]],
@@ -108,20 +105,6 @@ class GroqClient(ILLMClient):
 
         try:
             resp = self._client.chat.completions.create(**payload)
-            
-            # Log token usage
-            usage = getattr(resp, "usage", None)
-            if usage:
-                prompt_tokens = getattr(usage, "prompt_tokens", 0)
-                completion_tokens = getattr(usage, "completion_tokens", 0)
-                total_tokens = getattr(usage, "total_tokens", 0)
-                logger.info(
-                    f"Token usage - Model: {self.model}, "
-                    f"Prompt: {prompt_tokens}, "
-                    f"Completion: {completion_tokens}, "
-                    f"Total: {total_tokens}"
-                )
-            
             choices = getattr(resp, "choices", None) or []
             if not choices:
                 raise RuntimeError(
@@ -172,18 +155,5 @@ class GroqClient(ILLMClient):
                 delta = getattr(choices[0], "delta", None)
                 if delta and getattr(delta, "content", None):
                     yield delta.content
-                
-                # Log token usage from the final chunk (if available)
-                usage = getattr(chunk, "usage", None)
-                if usage:
-                    prompt_tokens = getattr(usage, "prompt_tokens", 0)
-                    completion_tokens = getattr(usage, "completion_tokens", 0)
-                    total_tokens = getattr(usage, "total_tokens", 0)
-                    logger.info(
-                        f"Token usage (streaming) - Model: {self.model}, "
-                        f"Prompt: {prompt_tokens}, "
-                        f"Completion: {completion_tokens}, "
-                        f"Total: {total_tokens}"
-                    )
         except Exception as e:
             raise RuntimeError(f"Groq chat_stream() failed: {e}") from e
