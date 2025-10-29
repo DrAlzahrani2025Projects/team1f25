@@ -121,10 +121,19 @@ class CSUSBLibraryClient(ILibraryClient):
             params["qInclude"] = f"facet_rtype,exact,{facet_value}"
             _log.info(f"Adding resource type filter: {params['qInclude']}")
         
-        r = self.session.get(url, params=params, timeout=self.timeout)
+        # Log detailed request info at debug level
+        _log.debug("CSUSBLibraryClient._explore_search - url=%s params=%s timeout=%s", url, {k: params[k] for k in params}, self.timeout)
+        try:
+            r = self.session.get(url, params=params, timeout=self.timeout)
+        except Exception as e:
+            _log.exception("CSUSBLibraryClient._explore_search - request failed: %s", e)
+            raise
+
         _log.info("Primo explore_search URL: %s", r.url)
+        _log.debug("CSUSBLibraryClient._explore_search - response status=%s", r.status_code)
         
         if r.status_code >= 400:
+            _log.error("Primo explore_search error status=%s body=%s", r.status_code, r.text[:400])
             raise requests.HTTPError(f"Explore {r.status_code}: {r.text[:400]}")
         
         data = r.json()
