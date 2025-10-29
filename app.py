@@ -17,7 +17,7 @@ def main():
     for role, content in st.session_state["chat"]:
         with st.chat_message(role):
             st.markdown(content)
-
+    # User input
     prompt = st.chat_input("Ask or type 'feed' / 'feed <query>'")
     if not prompt:
         return
