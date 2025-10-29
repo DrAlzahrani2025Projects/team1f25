@@ -2,18 +2,18 @@
 import os
 import chromadb
 from typing import List, Dict, Any, Iterable, Optional
-
+# Set up ChromaDB client and collection parameters
 DATA_DIR = os.getenv("DATA_DIR", "/data")
 if os.name == "posix" and (":" in DATA_DIR or DATA_DIR.startswith(("C:\\", "C:/"))):
     DATA_DIR = "/data"
 CHROMA_DIR = os.path.join(DATA_DIR, "chroma")
 COLLECTION = os.getenv("CHROMA_COLLECTION", "csusb_primo")
-
+# Define get_collection function
 def get_collection():
     client = chromadb.PersistentClient(path=CHROMA_DIR)
     return client.get_or_create_collection(COLLECTION)
 
-
+# Define _batched helper function
 def _batched(xs: List[Any], n: int) -> Iterable[List[Any]]:
     for i in range(0, len(xs), n):
         yield xs[i : i + n]
@@ -26,7 +26,7 @@ def get_existing_ids(coll, ids: List[str]) -> set:
             exists.add(iid)
     return exists
 
-
+# Define upsert function
 def upsert(
     coll,
     ids: List[str],
@@ -55,7 +55,7 @@ def upsert(
         )
         return len(keep_idx)
 
-
+# Define query function
 def query(
     coll,
     q_emb: List[float],
@@ -87,7 +87,7 @@ def query(
         where_document=where_document,
         include=include,
     )
-
+    # Parse results
     ids = (res.get("ids") or [[]])[0] or []
     docs = (res.get("documents") or [[]])[0] or []
     metas = (res.get("metadatas") or [[]])[0] or []
