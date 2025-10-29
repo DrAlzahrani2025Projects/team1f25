@@ -1,0 +1,87 @@
+# ui/theme.py
+import streamlit as st
+
+CSUSB_COLORS = {
+    "blue": "#0065BD",
+    "black": "#000000",
+    "gray": "#AAB0B5",
+    "white": "#FFFFFF",
+    "blue_dark": "#00509a",  # hover/pressed
+}
+
+def inject_brand_css():
+    css = f"""
+    <style>
+      :root {{
+        --csusb-blue: {CSUSB_COLORS["blue"]};
+        --csusb-blue-dark: {CSUSB_COLORS["blue_dark"]};
+        --csusb-black: {CSUSB_COLORS["black"]};
+        --csusb-gray: {CSUSB_COLORS["gray"]};
+        --csusb-white: {CSUSB_COLORS["white"]};
+      }}
+
+      /* Header title & subtitle */
+      h1, .stMarkdown h1 {{
+        color: var(--csusb-blue);
+      }}
+      .stMarkdown p, .stMarkdown li, .stMarkdown {{
+        color: var(--csusb-black);
+      }}
+
+      /* Buttons */
+      .stButton > button {{
+        background: var(--csusb-blue);
+        color: var(--csusb-white);
+        border: 0;
+        border-radius: 0.75rem;
+      }}
+      .stButton > button:hover {{
+        background: var(--csusb-blue-dark);
+      }}
+
+      /* Sidebar headings */
+      section[data-testid="stSidebar"] h1, 
+      section[data-testid="stSidebar"] h2, 
+      section[data-testid="stSidebar"] h3 {{
+        color: var(--csusb-blue);
+      }}
+
+      /* Links */
+      a, .st-emotion-cache-1wivap2 a {{
+        color: var(--csusb-blue);
+        text-decoration: none;
+      }}
+      a:hover {{
+        text-decoration: underline;
+      }}
+
+      /* Info/Success/Warning containers – subtle left bar in CSUSB blue */
+      .stAlert, div[data-baseweb="notification"] {{
+        border-left: 6px solid var(--csusb-blue);
+      }}
+
+      /* Dataframe header accent */
+      div[data-testid="stDataFrame"] thead tr th {{
+        border-bottom: 2px solid var(--csusb-blue);
+      }}
+
+      /* Chat bubbles */
+      .stChatMessage.assistant {{
+        background: rgba(170, 176, 181, 0.15); /* light CSUSB gray wash */
+        border-left: 4px solid var(--csusb-blue);
+        border-radius: 0.75rem;
+      }}
+      .stChatMessage.user {{
+        background: rgba(0, 101, 189, 0.08); /* light blue wash */
+        border-left: 4px solid var(--csusb-blue);
+        border-radius: 0.75rem;
+      }}
+
+      /* Dividers – faint CSUSB gray */
+      hr {{
+        border: none;
+        border-top: 1px solid rgba(170, 176, 181, 0.7);
+      }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)

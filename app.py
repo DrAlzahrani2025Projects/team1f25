@@ -17,6 +17,7 @@ from ui.components import (
     get_initial_greeting
 )
 from ui.chat_handler import initialize_groq_client, handle_user_message
+from ui.theme import inject_brand_css
 
 # Configure the Streamlit page
 st.set_page_config(
@@ -24,6 +25,7 @@ st.set_page_config(
     page_icon="📚",
     layout="wide"
 )
+inject_brand_css() 
 
 
 class ScholarAIApp:
