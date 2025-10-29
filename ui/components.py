@@ -82,7 +82,7 @@ def display_results_table(results: Dict[str, Any]):
         }
     )
 
-
+# Display result count helper function
 def _display_result_count(found: int, total: int):
     """Display information about result count."""
     if total > 0:
