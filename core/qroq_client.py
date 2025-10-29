@@ -58,13 +58,13 @@ def _as_messages(
         messages = [{"role": "system", "content": system}] + messages
     return messages
 
-
+# Define QroqClient class
 class QroqClient:
     """
     Thin wrapper around the Groq Python client with sane defaults and
     convenience helpers for non-streaming and streaming chat completions.
     """
-
+    # Initialize QroqClient
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -101,7 +101,7 @@ class QroqClient:
         )
 
         self._client = Groq(api_key=self.api_key)
-
+    # Define chat method
     def chat(
         self,
         content: Union[str, List[Dict[str, str]]],
@@ -128,7 +128,7 @@ class QroqClient:
             return (resp.choices[0].message.content or "").strip()
         except Exception as e:
             raise RuntimeError(f"Groq chat() failed: {e}") from e
-
+    # Define chat_stream method
     def chat_stream(
         self,
         content: Union[str, List[Dict[str, str]]],
@@ -148,7 +148,7 @@ class QroqClient:
         )
         if extra:
             payload.update(extra)
-
+        # Try to call Groq client for streaming chat completion
         try:
             stream = self._client.chat.completions.create(**payload)
             for chunk in stream:
