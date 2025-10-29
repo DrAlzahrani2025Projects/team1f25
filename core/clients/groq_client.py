@@ -2,6 +2,9 @@
 import os
 from typing import Any, Dict, Iterable, List, Optional, Union
 from core.interfaces import ILLMClient
+from core.utils.logging_utils import get_logger
+
+logger = get_logger(__name__)
 
 def _as_messages(
     content: Union[str, List[Dict[str, str]]],
@@ -78,6 +81,12 @@ class GroqClient(ILLMClient):
             self.max_tokens = 1024
 
         self._client = Groq(api_key=self.api_key)
+        logger.debug(
+            "GroqClient initialized: model=%s, temperature=%s, max_tokens=%s",
+            self.model,
+            self.temperature,
+            self.max_tokens,
+        )
 
     def chat(
         self,
@@ -100,6 +109,7 @@ class GroqClient(ILLMClient):
             payload.update(extra)
 
         try:
+            logger.debug("GroqClient.chat - sending payload keys: %s", list(payload.keys()))
             resp = self._client.chat.completions.create(**payload)
             choices = getattr(resp, "choices", None) or []
             if not choices:
@@ -109,8 +119,10 @@ class GroqClient(ILLMClient):
             first_choice = choices[0]
             message = getattr(first_choice, "message", None)
             content_text = getattr(message, "content", "") if message else ""
+            logger.debug("GroqClient.chat - received response length=%d", len(content_text or ""))
             return (content_text or "").strip()
         except Exception as e:
+            logger.exception("GroqClient.chat - error while calling Groq: %s", e)
             raise RuntimeError(f"Groq chat() failed: {e}") from e
 
     def chat_stream(
@@ -134,6 +146,7 @@ class GroqClient(ILLMClient):
             payload.update(extra)
 
         try:
+            logger.debug("GroqClient.chat_stream - starting stream with payload keys: %s", list(payload.keys()))
             stream = self._client.chat.completions.create(**payload)
             for chunk in stream:
                 choices = getattr(chunk, "choices", None) or []
@@ -143,6 +156,8 @@ class GroqClient(ILLMClient):
                     )
                 delta = getattr(choices[0], "delta", None)
                 if delta and getattr(delta, "content", None):
+                    logger.debug("GroqClient.chat_stream - yielding delta chunk len=%d", len(getattr(delta, "content", "")))
                     yield delta.content
         except Exception as e:
+            logger.exception("GroqClient.chat_stream - streaming error: %s", e)
             raise RuntimeError(f"Groq chat_stream() failed: {e}") from e
