@@ -3,9 +3,9 @@ from __future__ import annotations
 import streamlit as st
 from core.schemas import AgentInput
 from agents.orchestrator_agent import handle
-
+# Page configuration
 st.set_page_config(page_title="Scholar AI Assistant", page_icon="📚", layout="wide")
-
+# Main app
 def main():
     st.subheader("Scholar AI Assistant")
     st.caption("Type queries like **List top 10 ott subscriber churn articles**, **feed**, or **feed ott churn**.")
