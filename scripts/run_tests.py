@@ -9,7 +9,7 @@ Usage:
     python scripts/run_tests.py params       # Run parameter tests
     python scripts/run_tests.py e2e          # Run end-to-end tests
 """
-
+# Standard Library Imports
 import sys
 import os
 import subprocess
@@ -99,7 +99,7 @@ def run_category(category):
     print(f"\n{'='*80}")
     print(f"Results: {passed} passed, {failed} failed")
     print('='*80)
-
+#beginning of code
 def run_all_tests():
     """Run all tests."""
     print("\n" + "="*80)
@@ -122,7 +122,7 @@ def run_all_tests():
     print(f"\n{'='*80}")
     print(f"FINAL Results: {passed} passed, {failed} failed")
     print('='*80)
-
+#end of code
 def main():
     if len(sys.argv) > 1:
         category = sys.argv[1].lower()

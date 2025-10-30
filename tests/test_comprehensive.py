@@ -15,7 +15,7 @@ test_queries = [
     ("I need 5 journal articles about machine learning in healthcare", "Should return articles"),
     ("Find 5 books on machine learning in healthcare", "Should return books"),
 ]
-
+# Run tests
 for query, expected in test_queries:
     print(f"\n{'='*80}")
     print(f"Query: '{query}'")
@@ -52,7 +52,7 @@ for query, expected in test_queries:
             print(f"❌ MISMATCH: Got {list(type_counts.keys())} but requested {requested_type}")
     else:
         print("❌ No results returned")
-
+# End of tests
 print("\n" + "="*80)
 print("Tests complete!")
 

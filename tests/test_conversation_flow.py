@@ -25,7 +25,7 @@ Suggest:
 - customer churn
 - subscriber retention
 - streaming service analytics"""
-
+#end of prompt
     try:
         suggestions = groq_client.chat(prompt)
         return suggestions.strip()
@@ -64,7 +64,7 @@ print("STEP 2: Perform search")
 print("-"*80)
 
 results = perform_library_search(params['query'], params['limit'], params['resource_type'])
-
+# Check results
 if results is None:
     print("❌ ERROR: API failure")
 elif len(results.get("docs", [])) == 0:
