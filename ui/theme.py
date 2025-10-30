@@ -15,6 +15,11 @@ def get_assistant_avatar() -> str | None:
     path = "ui/assests/chatbot-icon.png"   # keep your folder name
     return path if os.path.exists(path) else None
 
+def get_user_avatar() -> str | None:
+    """Path to the user avatar image (fallback to default emoji if missing)."""
+    path = "ui/assests/coyote-icon.png"   # put your user icon here
+    return path if os.path.exists(path) else None
+
 def inject_brand_css():
 
     css = f"""

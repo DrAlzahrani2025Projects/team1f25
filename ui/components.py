@@ -2,7 +2,7 @@
 import streamlit as st
 from typing import Dict, Any
 from core.services.result_formatter import ResultFormatter
-from ui.theme import get_assistant_avatar
+from ui.theme import get_assistant_avatar, get_user_avatar
 
 def render_sidebar():
     """Render the sidebar with app information and controls."""
@@ -37,9 +37,14 @@ def render_sidebar():
 
 
 def render_chat_messages():
-    """Render all chat messages from session state."""
     for message in st.session_state.messages:
-        avatar = get_assistant_avatar() if message["role"] == "assistant" else None
+        if message["role"] == "assistant":
+            avatar = get_assistant_avatar()
+        elif message["role"] == "user":
+            avatar = get_user_avatar()
+        else:
+            avatar = None
+
         with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
 

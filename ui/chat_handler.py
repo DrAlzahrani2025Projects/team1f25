@@ -7,7 +7,7 @@ from core.services.suggestion_service import SuggestionService
 from core.utils.prompts import PromptManager
 from core.services.search_service import perform_library_search
 from core.utils.logging_utils import get_logger
-from ui.theme import get_assistant_avatar
+from ui.theme import get_assistant_avatar, get_user_avatar
 
 logger = get_logger(__name__)
 
@@ -152,7 +152,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
     if st.session_state.get("conversation_stage") == "awaiting_date_range":
         # Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=get_user_avatar()):
             st.markdown(prompt)
 
         # Parse the user's short reply for dates using the analyzer heuristics
@@ -176,7 +176,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
 
     # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=get_user_avatar()):
         st.markdown(prompt)
 
     # Process message
