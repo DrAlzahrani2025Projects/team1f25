@@ -10,6 +10,7 @@ from ui.components import (
     render_sidebar,
     render_chat_messages,
     display_search_results_section,
+    get_initial_greeting,
 )
 from ui.chat_handler import initialize_groq_client, handle_user_message
 from ui.theme import inject_brand_css  # CSUSB brand colors & UI polish
@@ -212,6 +213,14 @@ class ScholarAIApp:
             st.session_state.pop("sidebar_action", None)
             st.rerun()
 
+    def display_initial_greeting(self):
+        """Display initial greeting if no messages exist."""
+        if len(st.session_state.messages) == 0:
+            initial_message = get_initial_greeting()
+            st.session_state.messages.append({"role": "assistant", "content": initial_message})
+            with st.chat_message("assistant"):
+                st.markdown(initial_message)
+
     def handle_chat_input(self):
         """Handle user chat input."""
         if prompt := st.chat_input("Enter your research query..."):
@@ -226,6 +235,7 @@ class ScholarAIApp:
         self.handle_sidebar_actions()
         render_chat_messages()
         display_search_results_section()
+        self.display_initial_greeting()
         self.handle_chat_input()
 
 

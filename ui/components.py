@@ -105,4 +105,4 @@ def display_search_results_section():
 
 def get_initial_greeting() -> str:
     """Get the initial greeting message."""
-    return "Hello! I'm your Scholar AI Assistant. I'll help you find academic resources like articles, research papers, books, and journals. What would you like to research today?"
+    return "Hello! What would you like to research today?"
