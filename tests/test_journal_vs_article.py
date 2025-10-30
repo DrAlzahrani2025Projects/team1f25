@@ -8,7 +8,7 @@ from core.clients.groq_client import GroqClient
 from core.ai_assistant import extract_search_parameters
 
 client = GroqClient()
-
+#   
 test_cases = [
     "I need 5 journals about machine learning in healthcare",
     "I need 5 journal articles about machine learning in healthcare",
@@ -17,7 +17,7 @@ test_cases = [
 ]
 
 print("Testing journal vs journal article distinction:\n")
-
+# Run tests
 for query in test_cases:
     conv = [{'role': 'user', 'content': query}]
     params = extract_search_parameters(client, conv)
