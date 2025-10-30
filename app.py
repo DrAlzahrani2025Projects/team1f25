@@ -1,5 +1,4 @@
 # app.py
-
 import os
 import base64
 import glob
@@ -13,7 +12,7 @@ from ui.components import (
     get_initial_greeting,
 )
 from ui.chat_handler import initialize_groq_client, handle_user_message
-from ui.theme import inject_brand_css  # CSUSB brand colors & UI polish
+from ui.theme import inject_brand_css, get_assistant_avatar  # CSUSB brand colors & UI polish
 
 # -----------------------------------------------------------------------------
 # Logo resolution helpers
@@ -218,7 +217,7 @@ class ScholarAIApp:
         if len(st.session_state.messages) == 0:
             initial_message = get_initial_greeting()
             st.session_state.messages.append({"role": "assistant", "content": initial_message})
-            with st.chat_message("assistant"):
+            with st.chat_message("assistant", avatar=get_assistant_avatar()):
                 st.markdown(initial_message)
 
     def handle_chat_input(self):

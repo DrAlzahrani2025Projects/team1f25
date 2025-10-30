@@ -1,5 +1,6 @@
 # ui/theme.py
 import streamlit as st
+import os
 
 CSUSB_COLORS = {
     "blue": "#0065BD",
@@ -9,7 +10,13 @@ CSUSB_COLORS = {
     "blue_dark": "#00509a",  # hover/pressed
 }
 
+def get_assistant_avatar() -> str | None:
+    """Path to the assistant avatar image (fallback to emoji if missing)."""
+    path = "ui/assests/chatbot-icon.png"   # keep your folder name
+    return path if os.path.exists(path) else None
+
 def inject_brand_css():
+
     css = f"""
     <style>
       :root {{

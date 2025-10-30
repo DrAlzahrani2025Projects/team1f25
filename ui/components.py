@@ -1,12 +1,8 @@
 # ui/components.py
-"""
-UI components for the Streamlit application.
-Refactored to follow SRP - each function has a single, clear purpose.
-"""
 import streamlit as st
 from typing import Dict, Any
 from core.services.result_formatter import ResultFormatter
-
+from ui.theme import get_assistant_avatar
 
 def render_sidebar():
     """Render the sidebar with app information and controls."""
@@ -43,7 +39,8 @@ def render_sidebar():
 def render_chat_messages():
     """Render all chat messages from session state."""
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
+        avatar = get_assistant_avatar() if message["role"] == "assistant" else None
+        with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
 
 

@@ -1,8 +1,4 @@
 # ui/chat_handler.py
-"""
-Chat interaction handler for the Streamlit application.
-Refactored to follow SOLID principles (SRP, DIP, KISS).
-"""
 import streamlit as st
 from typing import Optional
 from core.clients.groq_client import GroqClient
@@ -11,6 +7,7 @@ from core.services.suggestion_service import SuggestionService
 from core.utils.prompts import PromptManager
 from core.services.search_service import perform_library_search
 from core.utils.logging_utils import get_logger
+from ui.theme import get_assistant_avatar
 
 logger = get_logger(__name__)
 
@@ -172,7 +169,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
         st.session_state.conversation_stage = "initial"
 
         # Resume the search using the stored pending conversation context
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar=get_assistant_avatar()):
             with st.spinner("Searching with your date range..."):
                 orchestrator.execute_search(pending_conv or st.session_state.messages.copy())
         return
@@ -183,7 +180,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
         st.markdown(prompt)
 
     # Process message
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=get_assistant_avatar()):
         with st.spinner("Thinking..."):
             conversation_history = st.session_state.messages.copy()
 
