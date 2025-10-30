@@ -91,7 +91,7 @@ def data_uri_for_image(path: str | None) -> str | None:
 
 st.set_page_config(
     page_title="Scholar AI Assistant",
-    page_icon="📚",
+    page_icon="ui/assests/paw-icon.png",
     layout="wide",
 )
 
