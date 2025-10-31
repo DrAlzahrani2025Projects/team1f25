@@ -15,8 +15,8 @@ logger = get_logger(__name__)
 class ConversationAnalyzer:
     """Analyzes conversation to determine search readiness and extract parameters."""
     
-    # Keywords that indicate user wants to search 
-    
+    # Keywords that indicate user wants to search immediately
+
     SEARCH_TRIGGER_KEYWORDS = [
         "search now", "find articles", "show me", "search for", 
         "look for", "get articles", "retrieve", "fetch"
