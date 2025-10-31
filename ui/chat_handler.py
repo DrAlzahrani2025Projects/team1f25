@@ -14,7 +14,7 @@ from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
+#groq client
 def initialize_groq_client() -> Optional[GroqClient]:
     """Initialize the Groq client for LLM interactions."""
     try:
