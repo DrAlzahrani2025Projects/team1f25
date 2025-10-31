@@ -21,7 +21,7 @@ class ConversationAnalyzer:
         "search now", "find articles", "show me", "search for", 
         "look for", "get articles", "retrieve", "fetch"
     ]
-    
+     # Keywords that indicate user wants to search immediately
     def __init__(self, llm_client: ILLMClient, prompt_provider: IPromptProvider):
         """Initialize with dependencies (Dependency Injection)."""
         self.llm_client = llm_client
