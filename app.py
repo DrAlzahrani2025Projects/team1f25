@@ -91,7 +91,7 @@ def data_uri_for_image(path: str | None) -> str | None:
 
 st.set_page_config(
     page_title="Scholar AI Assistant",
-    page_icon="ui/assests/csusb_logo_5-csusb-vert_cmyk.svg",
+    page_icon="ui/assests/CodyCoyote_head-smile_cmyk.svg",
     layout="wide",
 )
 
