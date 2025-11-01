@@ -67,11 +67,6 @@ def inject_brand_css():
         text-decoration: underline;
       }}
 
-      /* Info/Success/Warning containers – subtle left bar in CSUSB blue */
-      .stAlert, div[data-baseweb="notification"] {{
-        border-left: 6px solid var(--csusb-blue);
-      }}
-
       /* Dataframe header accent */
       div[data-testid="stDataFrame"] thead tr th {{
         border-bottom: 2px solid var(--csusb-blue);
