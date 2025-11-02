@@ -1,0 +1,54 @@
+name: Docker Scout Security Vulnerability Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  security-scan:
+    name: Run Docker Scout Scan
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image from docker/Dockerfile
+        run: |
+          docker build -f docker/Dockerfile -t ai-scholar-assistant:latest .
+
+      - name: Docker Scout build and scan
+        uses: docker/scout-action@v1
+        with:
+          dockerfile: docker/Dockerfile
+          context: .
+          output: report.json
+          sarif-file: docker-scout-report.sarif
+          ignore-unfixed: true
+
+      - name: Upload JSON report
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-scout-report-json
+          path: report.json
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: docker-scout-report.sarif
+
+      - name: Summary
+        run: |
+          echo "Docker Scout scan finished successfully."
+          echo "Reports uploaded as artifacts and to Security tab."
