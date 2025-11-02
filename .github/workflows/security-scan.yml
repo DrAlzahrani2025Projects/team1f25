@@ -7,6 +7,12 @@ on:
     branches: [ '*' ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write 
+  id-token: write
+
 jobs:
   security-scan:
     name: Run Docker Scout Scan
