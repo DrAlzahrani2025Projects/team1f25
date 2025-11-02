@@ -2,9 +2,9 @@ name: Docker Scout Security Vulnerability Scan
 
 on:
   push:
-    branches: [ main ]
+    branches: [ maharshi1512/security-scan-workflow ]
   pull_request:
-    branches: [ main ]
+    branches: [ maharshi1512/security-scan-workflow ]
   workflow_dispatch:
 
 jobs:
@@ -41,7 +41,6 @@ jobs:
           image: ${{ secrets.DOCKERHUB_USERNAME }}/ai-scholar-assistant:latest
           output: report.json
           sarif-file: docker-scout-report.sarif
-          ignore-unfixed: true
 
       - name: Upload JSON report
         uses: actions/upload-artifact@v4
