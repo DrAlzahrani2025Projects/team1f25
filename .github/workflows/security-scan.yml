@@ -52,7 +52,7 @@ jobs:
           summary: true
           format: json
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          write-comment: true
+          write-comment: false
 
       - name: Upload JSON report
         uses: actions/upload-artifact@v4
