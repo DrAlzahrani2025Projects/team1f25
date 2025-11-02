@@ -41,6 +41,7 @@ jobs:
           image: ${{ secrets.DOCKERHUB_USERNAME }}/ai-scholar-assistant:latest
           output: report.json
           sarif-file: docker-scout-report.sarif
+          command: cves
 
       - name: Upload JSON report
         uses: actions/upload-artifact@v4
