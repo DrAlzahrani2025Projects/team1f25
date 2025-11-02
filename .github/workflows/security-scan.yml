@@ -2,9 +2,9 @@ name: Docker Scout Security Vulnerability Scan
 
 on:
   push:
-    branches: [ main ]
+    branches: [ maharshi1512/security-scan-workflow ]
   pull_request:
-    branches: [ main ]
+    branches: [ maharshi1512/security-scan-workflow ]
   workflow_dispatch:
 
 jobs:
