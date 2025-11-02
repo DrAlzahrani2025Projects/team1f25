@@ -2,9 +2,9 @@ name: Docker Scout Security Vulnerability Scan
 
 on:
   push:
-    branches: [ maharshi1512/security-scan-workflow ]
+    branches: [ '*' ]
   pull_request:
-    branches: [ maharshi1512/security-scan-workflow ]
+    branches: [ '*' ]
   workflow_dispatch:
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
         id: scout
         uses: docker/scout-action@v1
         with:
-          command: cves                     # 👈 required
+          command: cves               
           image: ${{ secrets.DOCKERHUB_USERNAME }}/ai-scholar-assistant:latest
           output: report.json
           sarif-file: docker-scout-report.sarif
