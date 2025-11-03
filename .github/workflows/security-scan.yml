@@ -1,0 +1,97 @@
+name: Security Vulnerability Scan
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    env:
+      REPORTS_DIR: dependency-check-reports  # Explicit directory for reports
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Generate SBOM with CycloneDX
+        run: |
+          pip install cyclonedx-bom
+          # Use the `requirements` subcommand to read a requirements.txt file
+          cyclonedx-py requirements requirements.txt -o bom.xml
+          
+      - name: Create reports directory
+        run: mkdir -p ${{ env.REPORTS_DIR }}
+
+      - name: Run OWASP Dependency-Check
+        # use 'main' ref here so local 'act' can resolve the action; pin to a tag
+        # in CI once you verify the compatible release on GitHub Marketplace
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'team1f25'
+          path: '.'
+          format: 'HTML,JSON'
+          out: ${{ env.REPORTS_DIR }}
+          args: >
+            --enableExperimental
+            --scan bom.xml
+            --failOnCVSS 7
+            --suppression .github/dependency-check-suppressions.xml  # Optional: create this if needed
+            
+      - name: Upload Dependency Check Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: ${{ env.REPORTS_DIR }}
+          if-no-files-found: error
+          
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/python@master
+        continue-on-error: true # To prevent blocking the pipeline
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          command: monitor
+          
+      - name: Upload SBOM as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: sbom
+          path: bom.xml
+          
+      - name: Check for critical vulnerabilities
+        run: |
+          # Look for critical findings in generated JSON/HTML reports
+          set -e
+          REPORT_DIR=${{ env.REPORTS_DIR }}
+          if ls "$REPORT_DIR"/*.json >/dev/null 2>&1; then
+            if grep -i "CRITICAL" "$REPORT_DIR"/*.json >/dev/null 2>&1; then
+              echo "Critical vulnerabilities found in dependency-check JSON reports!"
+              exit 1
+            fi
+          elif ls "$REPORT_DIR"/*.html >/dev/null 2>&1; then
+            if grep -i "CRITICAL" "$REPORT_DIR"/*.html >/dev/null 2>&1; then
+              echo "Critical vulnerabilities found in dependency-check HTML reports!"
+              exit 1
+            fi
+          else
+            echo "No dependency-check report found in $REPORT_DIR"
+            exit 1
+          fi
