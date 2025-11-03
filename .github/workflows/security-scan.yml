@@ -28,14 +28,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Compute tags safely for forked PRs (no secrets)
       - name: Compute tags for this event
         id: tagfmt
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
-            echo "tags=local/team1f25-streamlit:pr-${{ github.event.number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
+            TAG="local/team1f25-streamlit:pr-${{ github.event.number }}-${{ github.sha }}"
+            echo "tags=${TAG}" >> $GITHUB_OUTPUT
+            echo "scan_tag=${TAG}" >> $GITHUB_OUTPUT
           else
-            echo "tags=${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:latest,${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:${{ github.sha }}" >> $GITHUB_OUTPUT
+            PUB_LATEST="${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:latest"
+            PUB_SHA="${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:${{ github.sha }}"
+            echo "tags=${PUB_LATEST},${PUB_SHA}" >> $GITHUB_OUTPUT
+            # On non-PRs we’ll scan by immutable @digest, so no scan_tag needed.
           fi
 
       # Login only when secrets are available (non-PR or same-repo PR)
@@ -69,10 +73,10 @@ jobs:
         id: image_ref
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # Scan the LOCAL build by its digest
-            echo "image=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+            # Scan the LOCALLY LOADED image by its tag to avoid any registry pull
+            echo "image=${{ steps.tagfmt.outputs.scan_tag }}" >> $GITHUB_OUTPUT
           else
-            # Scan the PUSHED immutable digest
+            # Scan the PUSHED immutable digest reference
             echo "image=${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit@${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
           fi
 
