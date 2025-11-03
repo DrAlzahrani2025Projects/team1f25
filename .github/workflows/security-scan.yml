@@ -47,7 +47,7 @@ jobs:
         with:
           project: 'team1f25'
           path: '.'
-          format: 'HTML,JSON'
+          format: 'ALL'
           out: 'dependency-check-reports'
           args: >
             --enableExperimental
