@@ -36,7 +36,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         id: build
         uses: docker/build-push-action@v6
         with:
@@ -48,19 +48,25 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          load: true
           provenance: true
           sbom: true
 
-      - name: Determine image digest
-        id: digest
-        run: echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+      - name: Determine image reference
+        id: image_ref
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "image=${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:latest" >> $GITHUB_OUTPUT
+          else
+            echo "image=${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit@${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Run Docker Scout vulnerability scan
         id: scout
         uses: docker/scout-action@v1
         with:
           command: cves
-          image: ${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit@${{ steps.digest.outputs.digest }}
+          image: ${{ steps.image_ref.outputs.image }}
           output: report.json
           sarif-file: docker-scout-report.sarif
           summary: true
