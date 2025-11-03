@@ -20,20 +20,28 @@ class SearchService:
         self.formatter = formatter or ResultFormatter()
     
     def search(
-        self, 
-        query: str, 
-        limit: int = 20, 
-        resource_type: Optional[str] = None
+        self,
+        query: str,
+        limit: int = 20,
+        resource_type: Optional[str] = None,
+        date_from: Optional[int] = None,
+        date_to: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """Perform search using the library client."""
         try:
             logger.info(f"Performing library search - query: {query}, limit: {limit}, type: {resource_type}")
             
+            # Pass through optional date filters if supported by the client
+            # Accept date_from/date_to as attributes on the SearchService call via kwargs
+            # to keep backward compatibility.
+            # If caller provided date_from/date_to as kwargs, use them; else None.
             results = self.library_client.search(
-                query=query, 
-                limit=limit, 
-                offset=0, 
-                resource_type=resource_type
+                query=query,
+                limit=limit,
+                offset=0,
+                resource_type=resource_type,
+                date_from=date_from,
+                date_to=date_to,
             )
             
             if results:
@@ -56,15 +64,17 @@ class SearchService:
 
 # Legacy function for backward compatibility - delegates to new service
 def perform_library_search(
-    query: str, 
-    limit: int = 20, 
-    resource_type: Optional[str] = None
+    query: str,
+    limit: int = 20,
+    resource_type: Optional[str] = None,
+    date_from: Optional[int] = None,
+    date_to: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
     """Legacy function - delegates to SearchService for backward compatibility."""
     from core.clients.csusb_library_client import CSUSBLibraryClient
     client = CSUSBLibraryClient()
     service = SearchService(client)
-    return service.search(query, limit, resource_type)
+    return service.search(query, limit, resource_type, date_from=date_from, date_to=date_to)
 
 
 # Legacy function for backward compatibility

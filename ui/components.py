@@ -30,13 +30,13 @@ def render_sidebar():
         - Example: "I need articles about machine learning in healthcare"
         """)
         
+
         st.divider()
-        
         new_search = st.button("🔄 Start New Search")
-        
+
         st.divider()
         st.caption("🔬 Powered by Groq AI & CSUSB Library")
-        
+
         return new_search
 
 
@@ -82,7 +82,7 @@ def display_results_table(results: Dict[str, Any]):
         }
     )
 
-
+# Display result count helper function
 def _display_result_count(found: int, total: int):
     """Display information about result count."""
     if total > 0:

@@ -96,3 +96,59 @@ class TestConversationAnalyzer:
         """Test that search trigger keywords are defined."""
         assert len(ConversationAnalyzer.SEARCH_TRIGGER_KEYWORDS) > 0
         assert "search now" in ConversationAnalyzer.SEARCH_TRIGGER_KEYWORDS
+
+    def test_extract_dates_from_llm_json(self):
+        """If LLM returns date_from/date_to in JSON, they are preserved."""
+        mock_json = '{"query": "machine learning", "limit": 5, "resource_type": "article", "date_from": 2015, "date_to": 2018}'
+        self.mock_llm.chat.return_value = mock_json
+
+        conversation = [{"role": "user", "content": "I need articles from 2015 to 2018 about ML"}]
+        params = self.analyzer.extract_search_parameters(conversation)
+
+        assert params.get("date_from") == 2015
+        assert params.get("date_to") == 2018
+
+    def test_heuristic_date_extraction_since_and_last(self):
+        """Heuristic extraction should catch 'since' and 'last N years' patterns."""
+        # Simulate LLM failure
+        self.mock_llm.chat.side_effect = Exception("API down")
+
+        conversation = [{"role": "user", "content": "Show me papers since 2019"}]
+        params = self.analyzer.extract_search_parameters(conversation)
+        assert params.get("date_from") == 2019
+
+        conversation2 = [{"role": "user", "content": "Recent work from the last 3 years"}]
+        params2 = self.analyzer.extract_search_parameters(conversation2)
+        from datetime import datetime
+        now = datetime.utcnow().year
+        assert params2.get("date_from") == now - 3 + 1
+        assert params2.get("date_to") == now
+
+    def test_month_and_quarter_parsing(self):
+        """Test month name parsing and quarter parsing heuristics."""
+        self.mock_llm.chat.side_effect = Exception("API down")
+
+        conversation = [{"role": "user", "content": "Show papers from March 2020"}]
+        params = self.analyzer.extract_search_parameters(conversation)
+        assert params.get("date_from") == 20200301
+
+        conversation2 = [{"role": "user", "content": "I need studies from Q2 2019"}]
+        params2 = self.analyzer.extract_search_parameters(conversation2)
+        assert params2.get("date_from") == 20190401
+        assert params2.get("date_to") == 20190631
+
+    def test_last_n_months(self):
+        """Test 'last N months' and 'last month' heuristics."""
+        self.mock_llm.chat.side_effect = Exception("API down")
+        from datetime import datetime
+        now = datetime.utcnow()
+
+        conversation = [{"role": "user", "content": "Find papers from the last 3 months"}]
+        params = self.analyzer.extract_search_parameters(conversation)
+        assert params.get("date_to") == int(now.strftime("%Y%m%d"))
+        assert params.get("date_from") is not None
+
+        conversation2 = [{"role": "user", "content": "Find papers from last month"}]
+        params2 = self.analyzer.extract_search_parameters(conversation2)
+        assert params2.get("date_from") is not None
+        assert params2.get("date_to") == int(now.strftime("%Y%m%d"))

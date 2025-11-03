@@ -7,6 +7,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from core.interfaces import ILibraryClient
 from core.utils.logging_utils import get_logger
+from core.utils.dates import normalize_date_bound, _get_today_yyyymmdd
 
 PRIMO_PUBLIC_BASE = os.getenv("PRIMO_PUBLIC_BASE", "https://csu-sb.primo.exlibrisgroup.com/primaws/rest/pub")
 PRIMO_VID   = os.getenv("PRIMO_VID",   "01CALS_USB:01CALS_USB")
@@ -58,7 +59,9 @@ class CSUSBLibraryClient(ILibraryClient):
         query: str,
         limit: int = 10,
         offset: int = 0,
-        resource_type: Optional[str] = None
+        resource_type: Optional[str] = None,
+        date_from: Optional[int] = None,
+        date_to: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Search the library database.
@@ -68,7 +71,9 @@ class CSUSBLibraryClient(ILibraryClient):
             q=query,
             limit=limit,
             offset=offset,
-            resource_type=resource_type
+            resource_type=resource_type,
+            date_from=date_from,
+            date_to=date_to,
         )
     
     def _explore_search(
@@ -80,6 +85,8 @@ class CSUSBLibraryClient(ILibraryClient):
         query: str | None = None,
         sort: str = "rank",
         resource_type: str | None = None,
+        date_from: int | None = None,
+        date_to: int | None = None,
     ) -> Dict[str, Any]:
         """Internal method for Primo search."""
         if (not q) and query:
@@ -120,6 +127,36 @@ class CSUSBLibraryClient(ILibraryClient):
             facet_value = type_facets.get(resource_type.lower(), resource_type.lower())
             params["qInclude"] = f"facet_rtype,exact,{facet_value}"
             _log.info(f"Adding resource type filter: {params['qInclude']}")
+
+        # Add date range filter if specified (year or YYYYMMDD accepted)
+        if date_from is not None or date_to is not None:
+            # Normalize bounds using shared utility
+            start_str = normalize_date_bound(date_from, True)
+            end_str = normalize_date_bound(date_to, False)
+
+            # Clamp future dates to today
+            today = _get_today_yyyymmdd()
+            try:
+                if end_str and end_str.isdigit() and int(end_str) > int(today):
+                    _log.info(f"Clamping end date {end_str} to today {today}")
+                    end_str = today
+                if start_str and start_str.isdigit() and int(start_str) > int(today):
+                    _log.info(f"Clamping start date {start_str} to today {today}")
+                    start_str = today
+                # Swap if start > end
+                if start_str and end_str and start_str.isdigit() and end_str.isdigit() and int(start_str) > int(end_str):
+                    _log.info(f"Swapping start/end dates: {start_str} > {end_str}")
+                    start_str, end_str = end_str, start_str
+            except Exception:
+                pass
+
+            # Append date filter to the q parameter
+            params_q = params.get("q", "")
+            if params_q.endswith(";"):
+                params_q = params_q.rstrip(";")
+            date_segment = f"dr_s,exact,{start_str},AND;dr_e,exact,{end_str};"
+            params["q"] = params_q + ";" + date_segment if params_q else date_segment
+            _log.info(f"Adding date range filter to q: {params['q']}")
         
         r = self.session.get(url, params=params, timeout=self.timeout)
         _log.info("Primo explore_search URL: %s", r.url)
@@ -148,6 +185,8 @@ def explore_search(
     query: str | None = None,
     sort: str = "rank",
     resource_type: str | None = None,
+    date_from: int | None = None,
+    date_to: int | None = None,
 ) -> Dict[str, Any]:
     """Legacy function - delegates to CSUSBLibraryClient for backward compatibility."""
     client = CSUSBLibraryClient()
@@ -157,5 +196,7 @@ def explore_search(
         offset=offset,
         query=query,
         sort=sort,
-        resource_type=resource_type
+        resource_type=resource_type,
+        date_from=date_from,
+        date_to=date_to
     )
