@@ -42,15 +42,16 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile
+          platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' && github.event.pull_request.head.repo.fork == false }}
+          load: ${{ github.event_name == 'pull_request' || github.event.pull_request.head.repo.fork == true }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: true
-          provenance: true
-          sbom: true
+          provenance: ${{ github.event_name != 'pull_request' }}
+          sbom: ${{ github.event_name != 'pull_request' }}
 
       - name: Determine image reference
         id: image_ref
