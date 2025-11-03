@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - security-vulneribility-008916759
   pull_request:
     branches:
       - main
