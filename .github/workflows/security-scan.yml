@@ -47,29 +47,12 @@ jobs:
           project: 'team1f25'
           path: '.'
           format: 'HTML,JSON'
-          args: >
-            --enableExperimental
-            --scan bom.xml
-            --failOnCVSS 7
-            --suppression .github/dependency-check-suppressions.xml
           out: 'dependency-check-reports'
           args: >
             --enableExperimental
             --scan bom.xml
             --failOnCVSS 7
             --suppression .github/dependency-check-suppressions.xml
-        - name: Run OWASP Dependency-Check
-          uses: dependency-check/Dependency-Check_Action@main
-          with:
-            project: 'team1f25'
-            path: '.'
-            format: 'HTML,JSON'
-            out: 'dependency-check-reports'
-            args: >
-              --enableExperimental
-              --scan bom.xml
-              --failOnCVSS 7
-              --suppression .github/dependency-check-suppressions.xml
       - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v4
         with:
