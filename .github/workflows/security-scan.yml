@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # Least privilege for build/scan
     permissions:
       contents: read
 
@@ -42,7 +41,6 @@ jobs:
             # On non-PRs we’ll scan by immutable @digest, so no scan_tag needed.
           fi
 
-      # Login only when secrets are available (non-PR or same-repo PR)
       - name: Log in to Docker Hub
         if: >
           github.event_name != 'pull_request' ||
@@ -59,9 +57,7 @@ jobs:
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64
-          # Push only when we have secrets (non-PR or same-repo PR)
           push: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false) }}
-          # Load local image for PRs so we can scan without registry access
           load: ${{ github.event_name == 'pull_request' }}
           tags: ${{ steps.tagfmt.outputs.tags }}
           cache-from: type=gha
@@ -86,15 +82,12 @@ jobs:
         with:
           command: cves
           image: ${{ steps.image_ref.outputs.image }}
-          # Fail on high/critical (tune as needed)
           only-severities: critical,high
           exit-code: true
-          # Outputs
           output: report.json
           sarif-file: docker-scout-report.sarif
           summary: true
           format: json
-          # No PR comments
           github-token: ${{ secrets.GITHUB_TOKEN }}
           write-comment: false
 
@@ -113,12 +106,16 @@ jobs:
     needs: build-and-scan
     timeout-minutes: 5
 
-    # Scope security-events: write ONLY where needed
     permissions:
       contents: read
       security-events: write
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
       - name: Download scan artifacts
         uses: actions/download-artifact@v4
         with:
@@ -129,6 +126,8 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: ./artifact/docker-scout-report.sarif
+          ref: ${{ github.ref }}
+          sha: ${{ github.sha }}
 
       - name: Summary
         run: |
