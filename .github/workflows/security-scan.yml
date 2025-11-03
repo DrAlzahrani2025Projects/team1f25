@@ -48,18 +48,20 @@ jobs:
           project: 'team1f25'
           path: '.'
           format: 'HTML,JSON'
-          out: ${{ env.REPORTS_DIR }}
+          out: 'dependency-check-reports'
           args: >
             --enableExperimental
             --scan bom.xml
             --failOnCVSS 7
-            --suppression .github/dependency-check-suppressions.xml  # Optional: create this if needed
+            --suppression .github/dependency-check-suppressions.xml
             
       - name: Upload Dependency Check Report
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
-          path: ${{ env.REPORTS_DIR }}
+          path: |
+            dependency-check-report.html
+            dependency-check-report.json
           if-no-files-found: error
           
       - name: Run Snyk to check for vulnerabilities

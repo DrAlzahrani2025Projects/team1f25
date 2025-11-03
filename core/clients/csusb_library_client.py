@@ -147,8 +147,8 @@ class CSUSBLibraryClient(ILibraryClient):
                 if start_str and end_str and start_str.isdigit() and end_str.isdigit() and int(start_str) > int(end_str):
                     _log.info(f"Swapping start/end dates: {start_str} > {end_str}")
                     start_str, end_str = end_str, start_str
-            except Exception:
-                pass
+            except Exception as e:
+                _log.error(f"Error processing date range: {e}")
 
             # Append date filter to the q parameter
             params_q = params.get("q", "")
