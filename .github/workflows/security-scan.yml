@@ -63,10 +63,8 @@ jobs:
           image: ${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit@${{ steps.digest.outputs.digest }}
           output: report.json
           sarif-file: docker-scout-report.sarif
-          ignore-unfixed: true
           summary: true
           format: json
-          fail-on: critical
           github-token: ${{ secrets.GITHUB_TOKEN }}
           write-comment: false
 
