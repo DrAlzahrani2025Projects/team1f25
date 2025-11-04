@@ -68,8 +68,14 @@ class ChatOrchestrator:
 
         # If no date information was provided, ask a clarifying question
         if date_from is None and date_to is None:
+            # use a properly pluralized resource label (default to 'articles')
+            if resource_type:
+                resource_label = resource_type if resource_type.endswith('s') else f"{resource_type}s"
+            else:
+                resource_label = "articles"
+
             clarifying = (
-                "When would you like the articles from? "
+                f"When would you like the {resource_label} from? "
                 "You can answer with examples like: 'last 5 years', '2015-2018', 'since 2019', or 'any time'."
             )
             st.markdown(clarifying)
@@ -98,7 +104,9 @@ class ChatOrchestrator:
             parts.append(f"**{limit}**")
         
         if resource_type:
-            type_text = f"**{resource_type}s**" if limit != 1 else f"**{resource_type}**"
+            # avoid doubling an 's' if the resource_type is already plural
+            base = resource_type if resource_type.endswith('s') else f"{resource_type}s"
+            type_text = f"**{base}**" if limit != 1 else f"**{resource_type}**"
             parts.append(type_text)
         else:
             parts.append("resources")
