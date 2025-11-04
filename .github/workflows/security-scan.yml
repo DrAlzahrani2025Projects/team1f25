@@ -1,4 +1,4 @@
-name: Security Scan with Trivy
+name: Docker Scan with Trivy
 on:
   push:
     branches: ["*"]
@@ -82,7 +82,7 @@ jobs:
         run: |
           mkdir -p docs
           {
-            echo "# Security Vulnerability Scan Report"
+            echo "# Docker Scan Vulnerability Report"
             echo
             echo "**Date:** $(date -u)"
             echo "**Git SHA:** ${{ github.sha }}"
@@ -140,7 +140,7 @@ jobs:
             echo
             echo "---"
             echo "_Generated automatically by Trivy vulnerability scanner_"
-          } > docs/Security_Scan_Report.md
+          } > docs/Docker_Scan_Report.md
 
       - name: Upload reports as artifacts
         uses: actions/upload-artifact@v4
@@ -148,7 +148,7 @@ jobs:
         with:
           name: security-scan-reports
           path: |
-            docs/Security_Scan_Report.md
+            docs/Docker_Scan_Report.md
             .scan/trivy-report.json
             .scan/trivy.sarif
           retention-days: 30
@@ -161,29 +161,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin "${BRANCH_NAME}" || true
-          git add docs/Security_Scan_Report.md
-          git commit -m "Add Security Scan Report for ${{ github.sha }}" || echo "No changes to commit"
+          git add docs/Docker_Scan_Report.md
+          git commit -m "Add Docker Scan Report for ${{ github.sha }}" || echo "No changes to commit"
           git push origin HEAD:"${BRANCH_NAME}"
-
-      - name: Comment on PR with summary
-        if: github.event_name == 'pull_request'
-        continue-on-error: true
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const report = fs.readFileSync('docs/Security_Scan_Report.md', 'utf8');
-            
-            // Get first 2000 chars of report for comment
-            const summary = report.substring(0, 2000) + (report.length > 2000 ? '\n\n_...truncated. See full report in artifacts._' : '');
-            
-            try {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: summary
-              });
-            } catch (error) {
-              console.log('Failed to comment on PR:', error.message);
-            }
