@@ -1,5 +1,4 @@
 name: Docker Scout Report
-
 on:
   push:
     branches: ["*"]
@@ -68,11 +67,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Install Docker Scout CLI (binary called "docker-scout")
+      # Install Docker Scout CLI plugin (portable installer)
       - name: Install Docker Scout CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sudo sh -s -- -b /usr/local/bin
-          docker-scout version || true
+          docker scout version || true
 
       # Run Docker Scout CLI to produce SARIF JSON (trusted contexts only)
       - name: Export vulnerabilities to SARIF JSON via Docker Scout CLI
@@ -80,7 +79,8 @@ jobs:
           github.event_name != 'pull_request' ||
           (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
         run: |
-          docker-scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" || true
+          # If CLI fails (e.g., entitlement), keep the job green and let the placeholder step handle it
+          docker scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" || true
 
       # Last resort: ensure a tiny placeholder so the Markdown step never 'skips'
       - name: Ensure placeholder report.json if absent
@@ -119,37 +119,79 @@ jobs:
             echo "## Image Scanned"
             echo "\`${{ steps.tag.outputs.val }}\`"
             echo
-            echo "## Summary of Findings (from SARIF)"
+            echo "## Summary of Vulnerabilities"
             echo
-            echo "| Severity | Rule ID | Location | Description |"
-            echo "|-----------|---------|----------|-------------|"
+            echo "| Severity | CVE | Package | Ecosystem | Affected | Fixed | Description |"
+            echo "|---|---|---|---|---|---|---|"
+
             jq -r '
-              ( .runs[0].results // [] )
-              | map({
-                  severity: (.level // "none"),
-                  rule: (.ruleId // "N/A"),
-                  location: (.locations[0].physicalLocation.artifactLocation.uri // "N/A"),
-                  message: (.message.text // "")
-                })
-              | if length == 0 then
-                  empty
+              # Helper to parse a package URL into ecosystem/name/version
+              def pkg_from_purl($p):
+                if ($p // "") == "" then
+                  {eco:"N/A", name:"N/A", ver:"N/A"}
                 else
-                  .[]
-                  | "| \(.severity) | \(.rule) | \(.location) | \((.message | gsub("\n"; " "))) |"
-                end
+                  ($p | capture("pkg:(?<type>[^/]+)/(?:(?<ns>[^/]+)/)?(?<name>[^@]+)@(?<ver>[^?]+)")) as $m
+                  | {eco:$m.type, name:$m.name, ver: ($m.ver | gsub("%2B"; "+") | gsub("%7E"; "~"))}
+                end;
+
+              .runs[0] as $run
+              | ($run.tool.driver.rules // []) as $rules
+              # Build lookup by ruleId for properties/help
+              | reduce $rules[] as $r ({}; . + { ($r.id): $r })
+              as $rules_by_id
+              # Map results to pretty rows enriched with rule details
+              | ($run.results // [])
+              | map(
+                  . as $res
+                  | ($rules_by_id[$res.ruleId] // {}) as $rule
+                  | ( $rule.properties.purls[0]? // "" ) as $purl
+                  | ( pkg_from_purl($purl) ) as $pkg
+                  | {
+                      sev: (($rule.properties.cvssV3_severity // $res.level // "N/A") | ascii_upcase),
+                      cve: ($res.ruleId // "N/A"),
+                      package: "\($pkg.name)@\($pkg.ver)",
+                      eco: $pkg.eco,
+                      affected: ($rule.properties.affected_version // "N/A"),
+                      fixed: ($rule.properties.fixed_version // "N/A"),
+                      desc: (
+                        # Prefer rule shortDescription/help, fall back to result message
+                        ($rule.shortDescription.text // $rule.help.text // $res.message.text // "")
+                        | split("\n")[0]            # keep first line
+                        | gsub("^>\\s*"; "")        # drop leading markdown quote if any
+                        | gsub("\\s+"; " ")         # collapse whitespace
+                      )
+                    }
+                )
+              # Sort by severity (CRITICAL > HIGH > MEDIUM > LOW > NOTE/INFO)
+              | sort_by(
+                  if .sev=="CRITICAL" then 5
+                  elif .sev=="HIGH" then 4
+                  elif .sev=="MEDIUM" then 3
+                  elif .sev=="LOW" then 2
+                  elif .sev=="WARNING" then 1
+                  else 0 end
+                )
+              | reverse
+              # Emit table rows
+              | .[]
+              | "| \(.sev) | \(.cve) | \(.package) | \(.eco) | \(.affected) | \(.fixed) | \(.desc) |"
             ' "$SCAN_JSON" || true
 
-            if [ "$(jq -r '(.runs[0].results // []) | length' "$SCAN_JSON" 2>/dev/null)" = "0" ]; then
+            COUNT=$(jq -r '(.runs[0].results // []) | length' "$SCAN_JSON" 2>/dev/null || echo 0)
+            if [ "$COUNT" = "0" ]; then
               if jq -e 'has("_note")' "$SCAN_JSON" >/dev/null 2>&1; then
-                echo "| — | — | — | Scan skipped (no auth). |"
+                echo "| — | — | — | — | — | — | Scan skipped (no auth). |"
               else
-                echo "| — | — | — | No vulnerabilities found. |"
+                echo "| — | — | — | — | — | — | No vulnerabilities found. |"
               fi
             fi
             echo
+            echo "_Legend: Severity is CVSS where available; otherwise SARIF level (WARNING/NOTE)._"
+            echo
             echo "---"
-            echo "_Generated automatically by Docker Scout CLI_"
+            echo "_Generated automatically by Docker Scout CLI (SARIF)_"
           } > docs/Docker_Scout_Report.md
+
 
       - name: Upload Markdown and SARIF JSON as artifacts
         uses: actions/upload-artifact@v4
