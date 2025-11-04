@@ -34,7 +34,7 @@ def extract_search_parameters(llm_client: ILLMClient, conversation_history: List
     analyzer = ConversationAnalyzer(llm_client, _default_prompt_manager)
     return analyzer.extract_search_parameters(conversation_history)
 
-
+# Legacy facade functions
 def extract_search_query(llm_client: ILLMClient, conversation_history: List[Dict]) -> str:
     """
     Extract and format a search query from conversation history.
@@ -43,7 +43,7 @@ def extract_search_query(llm_client: ILLMClient, conversation_history: List[Dict
     params = extract_search_parameters(llm_client, conversation_history)
     return params.get("query", "research")
 
-
+# Legacy facade functions
 def check_user_wants_search(user_input: str) -> bool:
     """
     Check if user explicitly wants to trigger a search.
