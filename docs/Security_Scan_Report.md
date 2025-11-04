@@ -1,12 +1,12 @@
 # Security Vulnerability Scan Report
 
-**Date:** Tue Nov  4 04:29:59 UTC 2025
-**Git SHA:** ca937ce3c0c524f0dbb6f43b9478a50f3e1471e4
+**Date:** Tue Nov  4 04:33:41 UTC 2025
+**Git SHA:** 3683d35b02660fd25764f6006a1296a8a38c6a11
 **Branch/Ref:** maharshi1512/security-scan-workflow
 **Scanner:** Trivy
 
 ## Image Scanned
-`local/team1f25-streamlit:ca937ce3c0c524f0dbb6f43b9478a50f3e1471e4`
+`local/team1f25-streamlit:3683d35b02660fd25764f6006a1296a8a38c6a11`
 
 ## Summary of Vulnerabilities
 
