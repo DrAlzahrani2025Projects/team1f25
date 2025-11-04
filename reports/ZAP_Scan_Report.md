@@ -34,3 +34,9 @@ Each step indicates:
 - `http://localhost:5001/robots.txt`
 - `http://localhost:5001/sitemap.xml`
 - `http://localhost:5001/team1f25/`
+
+**Description:**  
+CSP helps detect and mitigate XSS and data-injection attacks. It allows the site to define trusted content sources for JavaScript, CSS, images, fonts, etc.
+
+**Solution:**  
+Configure your server or load balancer to set the `Content-Security-Policy` header.
