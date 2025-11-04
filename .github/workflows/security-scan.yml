@@ -98,9 +98,15 @@ jobs:
           echo "SCAN_DIR listing:"
           ls -la "$SCAN_DIR" || true
           if [ -f "$SCAN_JSON" ]; then
-            echo "Found $SCAN_JSON (first 200 bytes):"
-            head -c 200 "$SCAN_JSON" || true
+            echo "Found $SCAN_JSON - file size:"
+            ls -lh "$SCAN_JSON"
+            echo "First 500 bytes:"
+            head -c 500 "$SCAN_JSON" || true
             echo
+            echo "Checking structure:"
+            jq -r '.runs[0].results | length' "$SCAN_JSON" 2>&1 || echo "Failed to parse results"
+            echo "Checking rules:"
+            jq -r '.runs[0].tool.driver.rules | length' "$SCAN_JSON" 2>&1 || echo "Failed to parse rules"
           else
             echo "MISSING $SCAN_JSON"
           fi
@@ -172,10 +178,12 @@ jobs:
               | reverse
               | .[]
               | "| \(.sev) | \(.cve) | \(.package) | \(.eco) | \(.affected) | \(.fixed) | \(.desc) |"
-            ' "$SCAN_JSON" > .scan/_rows.md || echo "__JQ_ERROR__" > .scan/_rows.md
+            ' "$SCAN_JSON" > .scan/_rows.md 2>.scan/_jq_errors.txt || echo "__JQ_ERROR__" > .scan/_rows.md
 
             if grep -q "__JQ_ERROR__" .scan/_rows.md; then
               echo "| — | — | — | — | — | — | (jq parse error; see logs) |"
+              echo "JQ Error details:"
+              cat .scan/_jq_errors.txt 2>/dev/null || echo "No error details available"
             elif [ ! -s .scan/_rows.md ]; then
               # No rows emitted; decide whether it was truly empty or skipped/auth issue
               COUNT="$(jq -r '(.runs[0].results // []) | length' "$SCAN_JSON" 2>/dev/null || echo 0)"
