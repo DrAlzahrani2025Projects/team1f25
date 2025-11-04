@@ -177,3 +177,17 @@ graph TB
 - **`ILLMClient`**: Contract for Language Model interactions
 - **`ILibraryClient`**: Contract for library database access
 - **`IPromptProvider`**: Contract for prompt template management
+
+#### 3. 🔌 External Clients
+- **`GroqClient`**: Wrapper for Groq LLM API (implements `ILLMClient`)
+- **`CSUSBLibraryClient`**: Wrapper for CSUSB Primo Library API (implements `ILibraryClient`)
+
+#### 4. 🛠️ Utilities
+- **`PromptManager`**: Centralized management of AI prompts (implements `IPromptProvider`)
+- **Date utilities**: Date parsing and normalization for search filters
+- **Error handling**: Centralized error management
+- **Logging**: Application-wide logging utilities
+
+#### 5. 🌐 External APIs
+- **Groq LLM API**: Provides AI capabilities using llama-3.3-70b-versatile model
+- **CSUSB Primo API**: Library database for searching academic resources
