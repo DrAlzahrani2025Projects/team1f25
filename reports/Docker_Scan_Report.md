@@ -1,12 +1,12 @@
 # Docker Scan Vulnerability Report
 
-**Date:** Tue Nov  4 23:20:11 UTC 2025
-**Git SHA:** 78d7c0b642ceef577b482f4e0241531d309ae04d
+**Date:** Tue Nov  4 23:32:11 UTC 2025
+**Git SHA:** 5f75bc0d61e1628c66612ee3ebcec6ca9532f873
 **Branch/Ref:** main
 **Scanner:** Trivy
 
 ## Image Scanned
-`local/team1f25-streamlit:78d7c0b642ceef577b482f4e0241531d309ae04d`
+`local/team1f25-streamlit:5f75bc0d61e1628c66612ee3ebcec6ca9532f873`
 
 ## Summary of Vulnerabilities
 
