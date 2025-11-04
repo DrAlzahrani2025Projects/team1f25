@@ -66,32 +66,11 @@ User: "Computer vision"
 Assistant: "READY_TO_SEARCH"
 
 (ACCEPT):
-Conversation 2 - Complete info provided:
-User: "I need 5 articles about climate change impacts on agriculture"
-Assistant: "READY_TO_SEARCH"
-
-(ACCEPT):
-Conversation 3 - Missing resource type:
-User: "Find research on neural networks"
-Assistant: "What type of resources are you looking for? Articles, books, journals, or any type?"
-User: "Any type"
-Assistant: "READY_TO_SEARCH"
-
-(ACCEPT):
-Conversation 4 - Topic too broad:
-User: "I need articles about AI"
-Assistant: "AI is a very broad topic. Could you be more specific? For example, are you interested in AI ethics, machine learning, computer vision, natural language processing, or a particular application area?"
-User: "Computer vision"
-Assistant: "READY_TO_SEARCH"
-
-(ACCEPT):
-Conversation 5 - Help:
 Conversation 5 - Help:
 User: "Explain about AI"
 Assistant: "AI is the field of creating systems that perform tasks usually requiring human intelligence—like perception, learning, reasoning, and language—using data-driven algorithms and models."
 
 (ACCEPT):
-Conversation 6 - Help:
 Conversation 6 - Help:
 User: "Give me abstract of Forecasting the Effects of Global Warming on Biodiversity"
 Assistant: Gives abstract of the specified scholarly article.
@@ -145,26 +124,20 @@ Examples:
 
 User: "I need 5 articles about machine learning in healthcare"
 {{"query": "machine learning healthcare", "limit": 5, "resource_type": "article"}}
-{{"query": "machine learning healthcare", "limit": 5, "resource_type": "article"}}
 
 User: "Find 10 books on climate change"
-{{"query": "climate change", "limit": 10, "resource_type": "book"}}
 {{"query": "climate change", "limit": 10, "resource_type": "book"}}
 
 User: "Show me research on diabetes"
 {{"query": "diabetes", "limit": 10, "resource_type": null}}
-{{"query": "diabetes", "limit": 10, "resource_type": null}}
 
 User: "I want 3 journal articles about AI"
-{{"query": "artificial intelligence", "limit": 3, "resource_type": "article"}}
 {{"query": "artificial intelligence", "limit": 3, "resource_type": "article"}}
 
 User: "I need 5 journals about machine learning in healthcare"
 {{"query": "machine learning healthcare", "limit": 5, "resource_type": "journal"}}
-{{"query": "machine learning healthcare", "limit": 5, "resource_type": "journal"}}
 
 User: "Get me 7 scholarly articles on robotics"
-{{"query": "robotics", "limit": 7, "resource_type": "article"}}
 {{"query": "robotics", "limit": 7, "resource_type": "article"}}
 
 Respond with ONLY valid JSON, nothing else."""
