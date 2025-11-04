@@ -125,44 +125,38 @@ jobs:
             echo "|---|---|---|---|---|---|---|"
 
             jq -r '
-              # Helper to parse a package URL into ecosystem/name/version
-              def pkg_from_purl($p):
-                if ($p // "") == "" then
+              def pkg_from_purl(p):
+                if (p // "") == "" then
                   {eco:"N/A", name:"N/A", ver:"N/A"}
                 else
-                  ($p | capture("pkg:(?<type>[^/]+)/(?:(?<ns>[^/]+)/)?(?<name>[^@]+)@(?<ver>[^?]+)")) as $m
+                  (p | capture("pkg:(?<type>[^/]+)/(?:(?<ns>[^/]+)/)?(?<name>[^@]+)@(?<ver>[^?]+)")) as $m
                   | {eco:$m.type, name:$m.name, ver: ($m.ver | gsub("%2B"; "+") | gsub("%7E"; "~"))}
                 end;
 
               .runs[0] as $run
               | ($run.tool.driver.rules // []) as $rules
-              # Build lookup by ruleId for properties/help
-              | reduce $rules[] as $r ({}; . + { ($r.id): $r })
-              as $rules_by_id
-              # Map results to pretty rows enriched with rule details
+              | (reduce $rules[] as $r ({}; . + { ($r.id): $r })) as $rules_by_id
               | ($run.results // [])
               | map(
                   . as $res
                   | ($rules_by_id[$res.ruleId] // {}) as $rule
-                  | ( $rule.properties.purls[0]? // "" ) as $purl
-                  | ( pkg_from_purl($purl) ) as $pkg
+                  | ($rule.properties.purls[0]? // "") as $purl
+                  | pkg_from_purl($purl) as $pkg
                   | {
                       sev: (($rule.properties.cvssV3_severity // $res.level // "N/A") | ascii_upcase),
                       cve: ($res.ruleId // "N/A"),
-                      package: "\($pkg.name)@\($pkg.ver)",
+                      package: ($pkg.name + "@" + $pkg.ver),
                       eco: $pkg.eco,
                       affected: ($rule.properties.affected_version // "N/A"),
                       fixed: ($rule.properties.fixed_version // "N/A"),
                       desc: (
-                        # Prefer rule shortDescription/help, fall back to result message
                         ($rule.shortDescription.text // $rule.help.text // $res.message.text // "")
-                        | split("\n")[0]            # keep first line
-                        | gsub("^>\\s*"; "")        # drop leading markdown quote if any
-                        | gsub("\\s+"; " ")         # collapse whitespace
+                        | split("\n")[0]
+                        | gsub("^>\\s*"; "")
+                        | gsub("\\s+"; " ")
                       )
                     }
                 )
-              # Sort by severity (CRITICAL > HIGH > MEDIUM > LOW > NOTE/INFO)
               | sort_by(
                   if .sev=="CRITICAL" then 5
                   elif .sev=="HIGH" then 4
@@ -172,7 +166,6 @@ jobs:
                   else 0 end
                 )
               | reverse
-              # Emit table rows
               | .[]
               | "| \(.sev) | \(.cve) | \(.package) | \(.eco) | \(.affected) | \(.fixed) | \(.desc) |"
             ' "$SCAN_JSON" || true
@@ -186,12 +179,11 @@ jobs:
               fi
             fi
             echo
-            echo "_Legend: Severity is CVSS where available; otherwise SARIF level (WARNING/NOTE)._"
+            echo "_Legend: Severity from CVSS where available; otherwise SARIF level._"
             echo
             echo "---"
             echo "_Generated automatically by Docker Scout CLI (SARIF)_"
           } > docs/Docker_Scout_Report.md
-
 
       - name: Upload Markdown and SARIF JSON as artifacts
         uses: actions/upload-artifact@v4
