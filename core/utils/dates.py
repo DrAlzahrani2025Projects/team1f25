@@ -4,17 +4,17 @@ This module centralizes date parsing/normalization logic used by the
 library client and conversation analyzer.
 """
 from __future__ import annotations
-
+# Date utilities for library search and conversation analysis
 from datetime import datetime
 import calendar
 import logging
 import re
 from typing import Optional, Tuple
-
+# Type alias for clarity
 MIN_YEAR = 1900
 logger = logging.getLogger(__name__)
 
-
+# Helper functions for various date pattern extractions
 def _extract_year_range(text: str) -> Tuple[Optional[int], Optional[int]]:
     """Extract year range patterns like '2015-2020', 'from 2015 to 2020', etc.
     
@@ -33,7 +33,7 @@ def _extract_year_range(text: str) -> Tuple[Optional[int], Optional[int]]:
             return int(y1), int(y2)
     return None, None
 
-
+# Full date extraction helper
 def _extract_full_date(text: str) -> Tuple[Optional[int], None]:
     """Extract full date patterns like '2020-03-05', '2020/03/05', '20200305'.
     
@@ -49,7 +49,7 @@ def _extract_full_date(text: str) -> Tuple[Optional[int], None]:
             logger.error(f"Error parsing date: {e}")
     return None, None
 
-
+# Month with day and year extraction helper
 def _extract_month_name_with_day_and_year(text: str) -> Tuple[Optional[int], None]:
     """Extract 'Month Day, Year' patterns like 'March 5, 2020'.
     
@@ -71,7 +71,7 @@ def _extract_month_name_with_day_and_year(text: str) -> Tuple[Optional[int], Non
             logger.error(f"Error extracting month/day/year: {e}")
     return None, None
 
-
+# Month and year extraction helper 
 def _extract_month_year(text: str) -> Tuple[Optional[int], None]:
     """Extract 'Month Year' patterns like 'Mar 2020', 'March 2020'.
     
@@ -89,7 +89,7 @@ def _extract_month_year(text: str) -> Tuple[Optional[int], None]:
             logger.error(f"Error extracting month/year: {e}")
     return None, None
 
-
+# Since YYYY extraction helper
 def _extract_since_year(text: str) -> Tuple[Optional[int], None]:
     """Extract 'since YYYY' patterns.
     
@@ -101,7 +101,7 @@ def _extract_since_year(text: str) -> Tuple[Optional[int], None]:
         y = int(m.group(1))
         return y, None
     return None, None
-
+# Last N years extraction helper
 
 def _extract_last_n_years(text: str) -> Tuple[Optional[int], Optional[int]]:
     """Extract 'last N years' patterns.
@@ -116,7 +116,7 @@ def _extract_last_n_years(text: str) -> Tuple[Optional[int], Optional[int]]:
         return now - n + 1, now
     return None, None
 
-
+# Last N months extraction helper
 def _extract_last_n_months(text: str) -> Tuple[Optional[int], Optional[int]]:
     """Extract 'last N months' patterns.
     
@@ -137,7 +137,7 @@ def _extract_last_n_months(text: str) -> Tuple[Optional[int], Optional[int]]:
         return start, end
     return None, None
 
-
+# Last month extraction helper
 def _extract_last_month(text: str) -> Tuple[Optional[int], Optional[int]]:
     """Extract 'last month' pattern.
     
@@ -156,7 +156,7 @@ def _extract_last_month(text: str) -> Tuple[Optional[int], Optional[int]]:
         return start, end
     return None, None
 
-
+# Quarter extraction helper
 def _extract_quarter(text: str) -> Tuple[Optional[int], Optional[int]]:
     """Extract 'Q[1-4] YYYY' patterns like 'Q1 2018'.
     
@@ -175,7 +175,7 @@ def _extract_quarter(text: str) -> Tuple[Optional[int], Optional[int]]:
         return start, end
     return None, None
 
-
+# Single year extraction helper
 def _extract_single_year(text: str) -> Tuple[Optional[int], None]:
     """Extract single year mention like '1999'.
     
@@ -198,7 +198,7 @@ def _extract_single_year(text: str) -> Tuple[Optional[int], None]:
         return year, None
     return None, None
 
-
+# Date normalization function
 def normalize_date_bound(value: Optional[int | str], is_start: bool) -> Optional[str]:
     """Normalize a date-like value into YYYYMMDD string suitable for queries.
 
@@ -292,7 +292,7 @@ def normalize_date_bound(value: Optional[int | str], is_start: bool) -> Optional
         raise ValueError(f"Year {year} is before minimum allowed {MIN_YEAR}")
     return padded
 
-
+# Today YYYYMMDD helper
 def _get_today_yyyymmdd() -> str:
     """Get today's date in YYYYMMDD format.
     
@@ -303,7 +303,7 @@ def _get_today_yyyymmdd() -> str:
     """
     return datetime.utcnow().strftime("%Y%m%d")
 
-
+# Main date extraction function
 def extract_dates_from_text(text: str) -> Tuple[Optional[int], Optional[int]]:
     """Heuristic extraction of date_from and date_to from natural text.
 

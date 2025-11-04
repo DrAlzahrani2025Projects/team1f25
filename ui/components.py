@@ -7,7 +7,7 @@ import streamlit as st
 from typing import Dict, Any
 from core.services.result_formatter import ResultFormatter
 
-
+# Sidebar rendering function
 def render_sidebar():
     """Render the sidebar with app information and controls."""
     with st.sidebar:
@@ -39,14 +39,14 @@ def render_sidebar():
 
         return new_search
 
-
+# Chat message rendering function
 def render_chat_messages():
     """Render all chat messages from session state."""
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-
+# Display results table function
 def display_results_table(results: Dict[str, Any]):
     """Display search results in a formatted table using ResultFormatter."""
     docs = results.get("docs", [])
@@ -93,7 +93,7 @@ def _display_result_count(found: int, total: int):
     else:
         st.success(f"Found {found} result(s)")
 
-
+# Display search results section function
 def display_search_results_section():
     """Display the search results section if results are available."""
     if st.session_state.search_results:
@@ -102,7 +102,7 @@ def display_search_results_section():
             st.subheader("🔍 Search Results")
             display_results_table(st.session_state.search_results)
 
-
+# Get initial greeting function
 def get_initial_greeting() -> str:
     """Get the initial greeting message."""
     return "Hello! I'm your Scholar AI Assistant. I'll help you find academic resources like articles, research papers, books, and journals. What would you like to research today?"

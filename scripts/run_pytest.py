@@ -12,7 +12,7 @@ SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 TESTS_DIR = PROJECT_ROOT / "tests"
 
-
+# Main function
 def main():
     """Run tests based on command line arguments."""
     if len(sys.argv) < 2:
@@ -76,7 +76,7 @@ def main():
         print("Install it with: pip install pytest pytest-mock")
         sys.exit(1)
 
-
+# Function to run legacy test scripts
 def run_legacy_tests():
     """Run legacy test scripts for backward compatibility."""
     legacy_dir = TESTS_DIR
@@ -114,7 +114,7 @@ def run_legacy_tests():
     print(f"Legacy Tests: {passed} passed, {failed} failed")
     print("=" * 80)
 
-
+# Function to print usage information
 def print_usage():
     """Print usage information."""
     print("""
@@ -149,6 +149,6 @@ Requirements:
     pip install pytest pytest-mock
 """)
 
-
+# Entry point
 if __name__ == "__main__":
     main()

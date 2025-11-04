@@ -4,7 +4,7 @@ Session state management for the Streamlit application.
 """
 import streamlit as st
 
-
+# Initialize session state variables
 def initialize_session_state():
     """Initialize all session state variables."""
     if "messages" not in st.session_state:
@@ -28,7 +28,7 @@ def initialize_session_state():
     if "search_results" not in st.session_state:
         st.session_state.search_results = None
 
-
+# track whether filters are active
 def reset_session_state():
     """Reset session state for a new search."""
     st.session_state.messages = []
