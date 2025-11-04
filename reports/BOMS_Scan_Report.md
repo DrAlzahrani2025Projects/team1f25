@@ -1,7 +1,7 @@
 # SBOM Vulnerability Report
 
-**Date:** Tue Nov  4 23:13:04 UTC 2025
-**Git SHA:** e24db880139dc068eb56f8007d7b8ec92130420c
+**Date:** Tue Nov  4 23:21:00 UTC 2025
+**Git SHA:** 78d7c0b642ceef577b482f4e0241531d309ae04d
 **Branch/Ref:** main
 **Scanner:** Grype
 **SBOM:** `bom.xml` (CycloneDX)
