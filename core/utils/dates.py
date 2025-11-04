@@ -181,7 +181,10 @@ def _extract_single_year(text: str) -> Tuple[Optional[int], None]:
     """
     m = re.search(r"\b(19|20)\d{2}\b", text)
     if m:
-        return int(m.group(0)), None
+        year = int(m.group(0))
+        # Treat a single-year mention as the full-year range (start and end)
+        # so that 'in 2018' means 2018-01-01 through 2018-12-31.
+        return year, year
     return None, None
 
 
