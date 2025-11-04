@@ -1,5 +1,4 @@
 name: Docker Scout Report
-
 on:
   push:
     branches: ["*"]
@@ -13,14 +12,14 @@ concurrency:
 
 jobs:
   report:
-    # Prevent infinite loop when the workflow pushes the Markdown file
+    # Prevent infinite re-triggers from our own "Add Docker Scout Report" commit
     if: github.actor != 'github-actions[bot]' && !contains((github.event.head_commit.message || ''), 'Add Docker Scout Report')
-    name: Build image, run Docker Scout CLI, and write Markdown
+    name: Build image, scan with Docker Scout CLI, and write Markdown
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     permissions:
-      contents: write  # required to commit docs/ back to the repo on trusted events
+      contents: write  # needed to commit docs/ on trusted events
 
     env:
       BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
@@ -33,6 +32,8 @@ jobs:
         with:
           ref: ${{ env.BRANCH_NAME }}
           fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -56,34 +57,56 @@ jobs:
       - name: Prepare scan dir
         run: mkdir -p "$SCAN_DIR"
 
-      # 🔹 Run Docker Scout via the official CLI container (no GitHub Action, no Docker Hub login)
-      # NOTE: If the Docker ID running in GitHub Actions is not entitled for Scout, this may return no results.
-      - name: Run Docker Scout CLI (SARIF JSON)
-        run: |
-          set -o pipefail
-          docker run --rm \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            docker/scout-cli:latest \
-            cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" || true
+      # Authenticate to Docker Hub only on trusted events (NOT forked PRs)
+      - name: Log in to Docker Hub
+        if: >
+          github.event_name != 'pull_request' ||
+          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # If the CLI couldn't produce output (e.g., no entitlement), create a tiny placeholder so Markdown still renders.
-      - name: Ensure placeholder report.json if missing
+      # Install Docker Scout CLI plugin (portable installer)
+      - name: Install Docker Scout CLI
         run: |
-          if [ ! -s "$SCAN_JSON" ]; then
-            echo '{"runs":[{"tool":{"driver":{"name":"docker-scout"}},"results":[]}],"_note":"scan failed or no entitlement"}' > "$SCAN_JSON"
+          curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sudo sh -s -- -b /usr/local/bin
+          docker scout version || true
+
+      # Run Docker Scout CLI to produce SARIF JSON (trusted contexts only)
+      - name: Export vulnerabilities to SARIF JSON via Docker Scout CLI
+        if: >
+          github.event_name != 'pull_request' ||
+          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        run: |
+          # If CLI fails (e.g., entitlement), keep the job green and let the placeholder step handle it
+          docker scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" || true
+
+      # Last resort: ensure a tiny placeholder so the Markdown step never 'skips'
+      - name: Ensure placeholder report.json if absent
+        if: always()
+        run: |
+          if [ ! -f "$SCAN_JSON" ]; then
+            echo '{"runs":[{"results":[]}] , "_note":"scan was skipped or failed to authenticate"}' > "$SCAN_JSON"
           fi
 
-      - name: Debug report.json presence
+      - name: Debug SARIF file presence
+        if: always()
         run: |
           echo "PWD: $(pwd)"
           ls -la
           echo "SCAN_DIR listing:"
           ls -la "$SCAN_DIR" || true
-          echo "First 200 bytes of $SCAN_JSON:"
-          head -c 200 "$SCAN_JSON" || true
-          echo
+          if [ -f "$SCAN_JSON" ]; then
+            echo "Found $SCAN_JSON (first 200 bytes):"
+            head -c 200 "$SCAN_JSON" || true
+            echo
+          else
+            echo "MISSING $SCAN_JSON"
+          fi
 
-      - name: Generate Markdown report from SARIF
+      - name: Generate Markdown report
+        if: always()
         run: |
           mkdir -p docs
           {
@@ -96,20 +119,17 @@ jobs:
             echo "## Image Scanned"
             echo "\`${{ steps.tag.outputs.val }}\`"
             echo
-            echo "## Findings (from SARIF)"
+            echo "## Summary of Findings (from SARIF)"
             echo
             echo "| Severity | Rule ID | Location | Description |"
             echo "|-----------|---------|----------|-------------|"
             jq -r '
-              (
-                .runs[0].results // []
-              )
+              # SARIF: runs[].results[] with fields: ruleId, level, message.text, locations[].physicalLocation.artifactLocation.uri
+              ( .runs[0].results // [] )
               | map({
                   severity: (.level // "none"),
                   rule: (.ruleId // "N/A"),
-                  location: (
-                    .locations[0].physicalLocation.artifactLocation.uri // "N/A"
-                  ),
+                  location: (.locations[0].physicalLocation.artifactLocation.uri // "N/A"),
                   message: (.message.text // "")
                 })
               | if length == 0 then
@@ -122,7 +142,7 @@ jobs:
 
             if [ "$(jq -r '(.runs[0].results // []) | length' "$SCAN_JSON" 2>/dev/null)" = "0" ]; then
               if jq -e 'has("_note")' "$SCAN_JSON" >/dev/null 2>&1; then
-                echo "| — | — | — | Scan failed or no entitlement. |"
+                echo "| — | — | — | Scan skipped (no auth). |"
               else
                 echo "| — | — | — | No vulnerabilities found. |"
               fi
@@ -135,7 +155,7 @@ jobs:
       - name: Upload Markdown and SARIF JSON as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: docker-scout-markdown-and-json
+          name: docker-scout-markdown-and-sarif
           path: |
             docs/Docker_Scout_Report.md
             ${{ env.SCAN_JSON }}
