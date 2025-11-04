@@ -1,7 +1,4 @@
 # ui/session_state.py
-"""
-Session state management for the Streamlit application.
-"""
 import streamlit as st
 
 # Initialize session state variables

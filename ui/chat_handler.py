@@ -1,8 +1,4 @@
 # ui/chat_handler.py
-"""
-Chat interaction handler for the Streamlit application.
-Refactored to follow SOLID principles (SRP, DIP, KISS).
-"""
 import streamlit as st
 from typing import Optional
 from core.clients.groq_client import GroqClient
@@ -11,6 +7,7 @@ from core.services.suggestion_service import SuggestionService
 from core.utils.prompts import PromptManager
 from core.services.search_service import perform_library_search
 from core.utils.logging_utils import get_logger
+from ui.theme import get_assistant_avatar, get_user_avatar
 
 logger = get_logger(__name__)
 
@@ -170,7 +167,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
     if st.session_state.get("conversation_stage") == "awaiting_date_range":
         # Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar=get_user_avatar()):
             st.markdown(prompt)
 
         # Parse the user's short reply for dates using the analyzer heuristics
@@ -197,18 +194,18 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
         st.session_state.conversation_stage = "initial"
 
         # Resume the search using the stored pending conversation context
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant", avatar=get_assistant_avatar()):
             with st.spinner("Searching with your date range..."):
                 orchestrator.execute_search(pending_conv or st.session_state.messages.copy())
         return
 
     # Add user message
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=get_user_avatar()):
         st.markdown(prompt)
 
     # Process message
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=get_assistant_avatar()):
         with st.spinner("Thinking..."):
             conversation_history = st.session_state.messages.copy()
 
@@ -236,4 +233,3 @@ def suggest_alternative_search(groq_client: GroqClient, original_query: str) -> 
     prompt_manager = PromptManager()
     service = SuggestionService(groq_client, prompt_manager)
     return service.generate_suggestions(original_query)
-
