@@ -137,3 +137,19 @@ X-Content-Type-Options: nosniff
 **Plugin ID:** 10021
 
 ---
+
+### ℹ️ Informational Alerts
+
+#### 5. Modern Web Application
+
+**Instances:** 1
+**URL:** [http://localhost:5001/team1f25/](http://localhost:5001/team1f25/)
+**Evidence:** `<script> window.prerenderReady = false </script>`
+
+**Description:**
+The application behaves as a modern web app or single-page app (SPA) with dynamic rendering.
+
+**Solution:** None required.
+**Plugin ID:** 10109
+
+---
