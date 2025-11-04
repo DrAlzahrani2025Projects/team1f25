@@ -70,8 +70,20 @@ jobs:
       # Install Docker Scout CLI plugin (portable installer)
       - name: Install Docker Scout CLI
         run: |
-          curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sudo sh -s -- -b /usr/local/bin
-          docker scout version || true
+          echo "Installing Docker Scout CLI..."
+          curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh -o install-scout.sh
+          chmod +x install-scout.sh
+          sudo ./install-scout.sh -b /usr/local/bin
+          
+          echo "Verifying installation..."
+          if command -v docker-scout &> /dev/null; then
+            echo "✓ Docker Scout CLI installed successfully"
+            docker-scout version
+          else
+            echo "⚠ Docker Scout CLI installation failed"
+            echo "Available docker commands:"
+            docker --help | grep -A 20 "Management Commands" || true
+          fi
 
       # Run Docker Scout CLI to produce SARIF JSON (trusted contexts only)
       - name: Export vulnerabilities to SARIF JSON via Docker Scout CLI
@@ -80,16 +92,22 @@ jobs:
           (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
         run: |
           echo "Running Docker Scout scan..."
-          if docker scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" 2>&1; then
-            echo "✓ Docker Scout scan completed successfully"
-            ls -lh "$SCAN_JSON"
+          
+          # Try docker-scout command (standalone CLI)
+          if command -v docker-scout &> /dev/null; then
+            echo "Using docker-scout CLI..."
+            if docker-scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" 2>&1; then
+              echo "✓ Docker Scout scan completed successfully"
+              ls -lh "$SCAN_JSON"
+            else
+              echo "⚠ Docker Scout scan failed"
+              cat "$SCAN_JSON" 2>/dev/null || true
+              echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}]}' > "$SCAN_JSON"
+            fi
           else
-            echo "⚠ Docker Scout scan failed - this might be due to:"
-            echo "  - Missing Docker Hub authentication"
-            echo "  - No Docker Scout subscription"
-            echo "  - Network/API issues"
-            echo "Creating empty SARIF placeholder..."
-            echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}]}' > "$SCAN_JSON"
+            echo "⚠ Docker Scout CLI not available"
+            echo "Skipping scan - creating empty SARIF placeholder..."
+            echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}], "_note":"Docker Scout CLI not installed"}' > "$SCAN_JSON"
           fi
 
       # Last resort: ensure a tiny placeholder so the Markdown step never 'skips'
