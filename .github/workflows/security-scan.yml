@@ -90,7 +90,7 @@ jobs:
           write-comment: false
 
       # Fallback: if the action didn't create the file, use the CLI directly
-      - name: Fallback: write JSON via Docker Scout CLI if missing
+      - name: Fallback write JSON via Docker Scout CLI if missing
         if: always()
         run: |
           if [ ! -f "$SCAN_JSON" ]; then
