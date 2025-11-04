@@ -1,15 +1,17 @@
 # 🧭 Docker Scout Security Vulnerability Report
 
-**Date:** Tue Nov  4 02:28:11 UTC 2025
-**Git SHA:** 4cbe51a46a1c9d8c864536c54d45fee5dd327057
+**Date:** Tue Nov  4 02:47:43 UTC 2025
+**Git SHA:** a560023f5067668e29a190b60dd89778dba4421e
 **Branch/Ref:** maharshi1512/security-scan-workflow
 
 ## 🐳 Image Scanned
-`local/team1f25-streamlit:4cbe51a46a1c9d8c864536c54d45fee5dd327057`
+`local/team1f25-streamlit:a560023f5067668e29a190b60dd89778dba4421e`
 
-## ℹ️ Scan Skipped
+## 🚨 Summary of High/Critical Vulnerabilities
 
-_This run didn’t authenticate to Docker Hub (likely a PR from a fork), so Docker Scout was skipped to protect secrets. Results will appear on trusted runs (pushes, internal PRs)._
+| Severity | Package | CVE | Description | Fixed In |
+|-----------|---------|-----|-------------|----------|
+| — | — | — | Scan skipped (no auth). | — |
 
 ---
 _Generated automatically by Docker Scout GitHub Action_
