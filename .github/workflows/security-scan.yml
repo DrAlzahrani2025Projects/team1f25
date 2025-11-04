@@ -2,12 +2,9 @@ name: Security Vulnerability Scan
 
 on:
   push:
-    branches:
-      - main
-      - security-vulneribility-008916759
+    branches: ["*"]
   pull_request:
-    branches:
-      - main
+    branches: ["*"]
 
 jobs:
   security-scan:
