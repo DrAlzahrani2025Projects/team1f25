@@ -49,7 +49,7 @@ def _extract_full_date(text: str) -> Tuple[Optional[int], None]:
             logger.error(f"Error parsing date: {e}")
     return None, None
 
-
+# Month with day and year extraction helper
 def _extract_month_name_with_day_and_year(text: str) -> Tuple[Optional[int], None]:
     """Extract 'Month Day, Year' patterns like 'March 5, 2020'.
     
@@ -71,7 +71,7 @@ def _extract_month_name_with_day_and_year(text: str) -> Tuple[Optional[int], Non
             logger.error(f"Error extracting month/day/year: {e}")
     return None, None
 
-# Month and year extraction helper
+# Month and year extraction helper 
 def _extract_month_year(text: str) -> Tuple[Optional[int], None]:
     """Extract 'Month Year' patterns like 'Mar 2020', 'March 2020'.
     
