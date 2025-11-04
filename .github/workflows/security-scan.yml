@@ -20,9 +20,18 @@ jobs:
     permissions:
       contents: write  # needed to commit docs/ on trusted events
 
+    env:
+      BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+
     steps:
-      - name: Checkout
+      - name: Checkout (on real branch)
         uses: actions/checkout@v4
+        with:
+          # checkout the source branch (PR head branch or current branch on push)
+          ref: ${{ env.BRANCH_NAME }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -53,7 +62,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Run Scout only when we’re authenticated (trusted contexts)
+      # Run Scout only when authenticated (trusted contexts)
       - name: Scan with Docker Scout (JSON output)
         id: scout
         if: >
@@ -64,7 +73,7 @@ jobs:
           command: cves
           image: ${{ steps.tag.outputs.val }}
           only-severities: critical,high
-          exit-code: false            # keep false so report always generates
+          exit-code: false
           output: report.json
           format: json
           summary: false
@@ -79,7 +88,7 @@ jobs:
             echo
             echo "**Date:** $(date -u)"
             echo "**Git SHA:** ${{ github.sha }}"
-            echo "**Branch/Ref:** ${{ github.ref_name }}"
+            echo "**Branch/Ref:** ${{ env.BRANCH_NAME }}"
             echo
             echo "## 🐳 Image Scanned"
             echo "\`${{ steps.tag.outputs.val }}\`"
@@ -90,9 +99,7 @@ jobs:
               echo "| Severity | Package | CVE | Description | Fixed In |"
               echo "|-----------|---------|-----|-------------|----------|"
               jq -r '
-                (
-                  .vulnerabilities // []
-                )
+                (.vulnerabilities // [])
                 | map(select((.severity // "" | ascii_downcase)=="critical" or (.severity // "" | ascii_downcase)=="high"))
                 | if length==0 then
                     empty
@@ -107,7 +114,7 @@ jobs:
             else
               echo "## ℹ️ Scan Skipped"
               echo
-              echo "_This run didn’t authenticate to Docker Hub (likely a PR from a fork), so Docker Scout was skipped to avoid exposing secrets. The report will include results on trusted runs (pushes, internal PRs)._"
+              echo "_This run didn’t authenticate to Docker Hub (likely a PR from a fork), so Docker Scout was skipped to protect secrets. Results will appear on trusted runs (pushes, internal PRs)._"
             fi
             echo
             echo "---"
@@ -131,6 +138,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin "${BRANCH_NAME}" || true
           git add docs/Docker_Scout_Report.md
           git commit -m "Add Docker Scout Report for ${{ github.sha }}" || echo "No changes to commit"
-          git push
+          git push origin HEAD:"${BRANCH_NAME}"
