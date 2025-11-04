@@ -1,23 +1,24 @@
 # ui/components.py
-"""
-UI components for the Streamlit application.
-Refactored to follow SRP - each function has a single, clear purpose.
-"""
 import streamlit as st
 from typing import Dict, Any
 from core.services.result_formatter import ResultFormatter
-
+from ui.theme import get_assistant_avatar, get_user_avatar
 
 def render_sidebar():
     """Render the sidebar with app information and controls."""
+
     with st.sidebar:
+
+        # Center the button or make it full width
+        new_search = st.button("Start New Search", use_container_width=True)
+
+        st.divider()
+
         st.header("ℹ️ About")
         st.markdown("""
         This AI assistant helps you find scholarly resources by:
-        1. Asking questions about your research needs
-        2. Understanding your requirements
-        3. Searching the CSUSB library database
-        4. Presenting results in an organized table
+        1. Understanding your research needs
+        2. Searching and displaying results
         """)
         
         st.divider()
@@ -29,10 +30,6 @@ def render_sidebar():
         - Be specific about your subject area
         - Example: "I need articles about machine learning in healthcare"
         """)
-        
-
-        st.divider()
-        new_search = st.button("🔄 Start New Search")
 
         st.divider()
         st.caption("🔬 Powered by Groq AI & CSUSB Library")
@@ -41,9 +38,15 @@ def render_sidebar():
 
 
 def render_chat_messages():
-    """Render all chat messages from session state."""
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
+        if message["role"] == "assistant":
+            avatar = get_assistant_avatar()
+        elif message["role"] == "user":
+            avatar = get_user_avatar()
+        else:
+            avatar = None
+
+        with st.chat_message(message["role"], avatar=avatar):
             st.markdown(message["content"])
 
 
@@ -105,4 +108,4 @@ def display_search_results_section():
 
 def get_initial_greeting() -> str:
     """Get the initial greeting message."""
-    return "Hello! I'm your Scholar AI Assistant. I'll help you find academic resources like articles, research papers, books, and journals. What would you like to research today?"
+    return "Hello! What would you like to research today?"
