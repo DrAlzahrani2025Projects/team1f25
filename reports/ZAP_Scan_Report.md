@@ -184,3 +184,33 @@ Checked for differences in responses based on various User-Agent headers (e.g., 
 **Plugin ID:** 10104
 
 ---
+
+## 🧮 Sequence Details
+
+Contains all active scan results tied to each sequence step.
+
+---
+
+## ✅ Summary of Recommended Fixes
+
+1. **Add Security Headers**
+
+   * Content-Security-Policy
+   * X-Frame-Options
+   * X-Content-Type-Options
+
+2. **Suppress Server Version Info**
+
+   * Remove or mask “Server: TornadoServer/6.5.2”
+
+3. **General Recommendations**
+
+   * Review HTTP response headers regularly.
+   * Use modern browsers to avoid legacy MIME-sniffing.
+   * Perform recurring scans to detect regressions.
+
+---
+
+**End of Report**
+
+---
