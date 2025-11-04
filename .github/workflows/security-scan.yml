@@ -1,4 +1,4 @@
-name: Docker Scout Security Vulnerability Scan
+name: Docker Scout Report
 
 on:
   push:
@@ -12,124 +12,112 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-scan:
-    name: Build image and run Docker Scout
+  report:
+    name: Build image, scan, and write Markdown report
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Needed only to commit docs/ back to the repo on trusted events
     permissions:
-      contents: read
+      contents: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Compute tags for this event
-        id: tagfmt
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
-            TAG="local/team1f25-streamlit:pr-${{ github.event.number }}-${{ github.sha }}"
-            echo "tags=${TAG}" >> $GITHUB_OUTPUT
-            echo "scan_tag=${TAG}" >> $GITHUB_OUTPUT
-          else
-            PUB_LATEST="${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:latest"
-            PUB_SHA="${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit:${{ github.sha }}"
-            echo "tags=${PUB_LATEST},${PUB_SHA}" >> $GITHUB_OUTPUT
-            # On non-PRs we’ll scan by immutable @digest, so no scan_tag needed.
-          fi
+      - name: Choose local tag
+        id: tag
+        run: echo "val=local/team1f25-streamlit:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
-      - name: Log in to Docker Hub
-        if: >
-          github.event_name != 'pull_request' ||
-          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build Docker image
-        id: build
+      - name: Build image (local only; no push)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64
-          push: ${{ github.event_name != 'pull_request' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false) }}
-          load: ${{ github.event_name == 'pull_request' }}
-          tags: ${{ steps.tagfmt.outputs.tags }}
+          load: true
+          push: false
+          tags: ${{ steps.tag.outputs.val }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: ${{ github.event_name != 'pull_request' }}
-          sbom: ${{ github.event_name != 'pull_request' }}
 
-      - name: Determine image reference to scan
-        id: image_ref
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # Scan the LOCALLY LOADED image by its tag to avoid any registry pull
-            echo "image=${{ steps.tagfmt.outputs.scan_tag }}" >> $GITHUB_OUTPUT
-          else
-            # Scan the PUSHED immutable digest reference
-            echo "image=${{ secrets.DOCKERHUB_USERNAME }}/team1f25-streamlit@${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Run Docker Scout vulnerability scan
+      - name: Scan with Docker Scout (JSON output)
         id: scout
         uses: docker/scout-action@v1
         with:
           command: cves
-          image: ${{ steps.image_ref.outputs.image }}
+          image: ${{ steps.tag.outputs.val }}
           only-severities: critical,high
-          exit-code: true
+          # keep false so the job always writes a report; set true to fail on High/Critical
+          exit-code: false
           output: report.json
-          sarif-file: docker-scout-report.sarif
-          summary: true
           format: json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          summary: false
           write-comment: false
 
-      - name: Upload scan artifacts (JSON + SARIF)
+      - name: Generate Markdown report
+        if: always()
+        run: |
+          mkdir -p docs
+          {
+            echo "# 🧭 Docker Scout Security Vulnerability Report"
+            echo
+            echo "**Date:** $(date -u)"
+            echo "**Git SHA:** ${{ github.sha }}"
+            echo "**Branch/Ref:** ${{ github.ref_name }}"
+            echo
+            echo "## 🐳 Image Scanned"
+            echo "\`${{ steps.tag.outputs.val }}\`"
+            echo
+            echo "## 🚨 Summary of High/Critical Vulnerabilities"
+            if [ -f report.json ]; then
+              echo
+              echo "| Severity | Package | CVE | Description | Fixed In |"
+              echo "|-----------|---------|-----|-------------|----------|"
+              jq -r '
+                (
+                  .vulnerabilities // []
+                )
+                | map(select((.severity // "" | ascii_downcase)=="critical" or (.severity // "" | ascii_downcase)=="high"))
+                | if length==0 then
+                    empty
+                  else
+                    .[]
+                    | "| \(.severity) | \((.package // .package_name // "unknown")) | \(.cve // "N/A") | \((.description // "" | gsub("\n"; " "))) | \((.fixVersion // .fixed_version // "N/A")) |"
+                  end
+              ' report.json
+              if [ $? -ne 0 ] || [ "$(jq -r '(.vulnerabilities // []) | map(select((.severity // "" | ascii_downcase)=="critical" or (.severity // "" | ascii_downcase)=="high")) | length' report.json)" = "0" ]; then
+                echo "| — | — | — | No High/Critical vulnerabilities found. | — |"
+              fi
+            else
+              echo
+              echo "_⚠️ No report.json file found._"
+            fi
+            echo
+            echo "---"
+            echo "_Generated automatically by Docker Scout GitHub Action_"
+          } > docs/Docker_Scout_Report.md
+
+      - name: Upload Markdown and JSON as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: docker-scout-reports
+          name: docker-scout-markdown-and-json
           path: |
+            docs/Docker_Scout_Report.md
             report.json
-            docker-scout-report.sarif
           retention-days: 7
 
-  upload-sarif:
-    name: Upload SARIF to GitHub Security
-    runs-on: ubuntu-latest
-    needs: build-and-scan
-    timeout-minutes: 5
-
-    permissions:
-      contents: read
-      security-events: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Download scan artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-scout-reports
-          path: ./artifact
-
-      - name: Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: ./artifact/docker-scout-report.sarif
-          ref: ${{ github.ref }}
-          sha: ${{ github.sha }}
-
-      - name: Summary
+      # Commit report back to repo only on trusted contexts (not forked PRs)
+      - name: Commit Docker Scout Report
+        if: >
+          ( github.event_name != 'pull_request' ) ||
+          ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false )
         run: |
-          echo "✅ Docker Scout scan completed successfully."
-          echo "SARIF uploaded to the Security tab; JSON report kept as artifact."
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/Docker_Scout_Report.md
+          git commit -m "Add Docker Scout Report for ${{ github.sha }}" || echo "No changes to commit"
+          git push
