@@ -13,6 +13,10 @@ concurrency:
 
 jobs:
   report:
+    # 🛑 Best-practice safeguard against infinite loops:
+    # - Don't run if the commit was made by the Actions bot
+    # - Don't run if the commit message is our auto-report commit
+    if: github.actor != 'github-actions[bot]' && !contains((github.event.head_commit.message || ''), 'Add Docker Scout Report')
     name: Build image, scan, and write Markdown report
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -21,13 +25,16 @@ jobs:
       contents: write  # needed to commit docs/ on trusted events
 
     env:
+      # Source branch for commits (PR head ref on PRs, current branch on pushes)
       BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+      # Explicit paths for scan outputs
+      SCAN_DIR: .scan
+      SCAN_JSON: .scan/report.json
 
     steps:
       - name: Checkout (on real branch)
         uses: actions/checkout@v4
         with:
-          # checkout the source branch (PR head branch or current branch on push)
           ref: ${{ env.BRANCH_NAME }}
           fetch-depth: 0
           persist-credentials: true
@@ -62,6 +69,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Prepare scan dir
+        run: mkdir -p "$SCAN_DIR"
+
       # Run Scout only when authenticated (trusted contexts)
       - name: Scan with Docker Scout (JSON output)
         id: scout
@@ -73,11 +83,34 @@ jobs:
           command: cves
           image: ${{ steps.tag.outputs.val }}
           only-severities: critical,high
-          exit-code: false
-          output: report.json
+          exit-code: false          # keep false so report always generates
+          output: ${{ env.SCAN_JSON }}
           format: json
           summary: false
           write-comment: false
+
+      # Optional: always ensure a JSON exists so Markdown step never "skips"
+      - name: Ensure placeholder report.json if scan absent
+        if: always()
+        run: |
+          if [ ! -f "$SCAN_JSON" ]; then
+            echo '{"vulnerabilities":[],"_note":"scan was skipped or failed to authenticate"}' > "$SCAN_JSON"
+          fi
+
+      - name: Debug report.json presence
+        if: always()
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la
+          echo "SCAN_DIR listing:"
+          ls -la "$SCAN_DIR" || true
+          if [ -f "$SCAN_JSON" ]; then
+            echo "Found $SCAN_JSON (first 200 bytes):"
+            head -c 200 "$SCAN_JSON" || true
+            echo
+          else
+            echo "MISSING $SCAN_JSON"
+          fi
 
       - name: Generate Markdown report
         if: always()
@@ -93,28 +126,28 @@ jobs:
             echo "## 🐳 Image Scanned"
             echo "\`${{ steps.tag.outputs.val }}\`"
             echo
-            if [ -f report.json ]; then
-              echo "## 🚨 Summary of High/Critical Vulnerabilities"
-              echo
-              echo "| Severity | Package | CVE | Description | Fixed In |"
-              echo "|-----------|---------|-----|-------------|----------|"
-              jq -r '
-                (.vulnerabilities // [])
-                | map(select((.severity // "" | ascii_downcase)=="critical" or (.severity // "" | ascii_downcase)=="high"))
-                | if length==0 then
-                    empty
-                  else
-                    .[]
-                    | "| \(.severity) | \((.package // .package_name // "unknown")) | \(.cve // "N/A") | \((.description // "" | gsub("\n"; " "))) | \((.fixVersion // .fixed_version // "N/A")) |"
-                  end
-              ' report.json
-              if [ $? -ne 0 ] || [ "$(jq -r '(.vulnerabilities // []) | map(select((.severity // "" | ascii_downcase)=="critical" or (.severity // "" | ascii_downcase)=="high")) | length' report.json)" = "0" ]; then
+            echo "## 🚨 Summary of High/Critical Vulnerabilities"
+            echo
+            echo "| Severity | Package | CVE | Description | Fixed In |"
+            echo "|-----------|---------|-----|-------------|----------|"
+            jq -r '
+              (.vulnerabilities // [])
+              | map(select((.severity // "" | ascii_downcase)=="critical" or (.severity // "" | ascii_downcase)=="high"))
+              | if length==0 then
+                  empty
+                else
+                  .[]
+                  | "| \(.severity) | \((.package // .package_name // "unknown")) | \(.cve // "N/A") | \((.description // "" | gsub("\n"; " "))) | \((.fixVersion // .fixed_version // "N/A")) |"
+                end
+            ' "$SCAN_JSON" || true
+
+            # If table had no rows, decide whether it was a real “0 vulns” vs “skipped”
+            if [ "$(jq -r '(.vulnerabilities // []) | map(select((.severity // "" | ascii_downcase)=="critical" or (.severity // "" | ascii_downcase)=="high")) | length' "$SCAN_JSON" 2>/dev/null)" = "0" ]; then
+              if jq -e 'has("_note")' "$SCAN_JSON" >/dev/null 2>&1; then
+                echo "| — | — | — | Scan skipped (no auth). | — |"
+              else
                 echo "| — | — | — | No High/Critical vulnerabilities found. | — |"
               fi
-            else
-              echo "## ℹ️ Scan Skipped"
-              echo
-              echo "_This run didn’t authenticate to Docker Hub (likely a PR from a fork), so Docker Scout was skipped to protect secrets. Results will appear on trusted runs (pushes, internal PRs)._"
             fi
             echo
             echo "---"
@@ -127,7 +160,7 @@ jobs:
           name: docker-scout-markdown-and-json
           path: |
             docs/Docker_Scout_Report.md
-            report.json
+            ${{ env.SCAN_JSON }}
           retention-days: 7
 
       # Commit report back to repo only on trusted contexts (not forked PRs)
