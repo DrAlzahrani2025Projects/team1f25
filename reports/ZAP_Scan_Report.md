@@ -170,3 +170,18 @@ Detected TornadoServer technology (version 6.5.2).
 **Plugin ID:** 10004
 
 ---
+
+#### 7. User Agent Fuzzer
+
+**Instances:** 12
+**URL Tested:** [http://localhost:5001/team1f25/](http://localhost:5001/team1f25/)
+
+**Description:**
+Checked for differences in responses based on various User-Agent headers (e.g., IE, Chrome, Firefox, Googlebot, Yahoo Slurp, MSNBOT).
+
+**Solution:** Informational only — ensure consistent handling for all User-Agents.
+
+**Reference:** [OWASP Web Security Testing Guide](https://owasp.org/wstg)
+**Plugin ID:** 10104
+
+---
