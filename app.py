@@ -100,7 +100,7 @@ inject_brand_css()  # CSUSB palette
 
 class ScholarAIApp:
     """Main application class following SRP."""
-
+# Constructor
     def __init__(self):
         self.groq_client = None
         self._header_css_injected = False
@@ -237,11 +237,11 @@ class ScholarAIApp:
         self.display_initial_greeting()
         self.handle_chat_input()
 
-
+# Application entry point
 def main():
     app = ScholarAIApp()
     app.run()
 
-
+# Entry point
 if __name__ == "__main__":
     main()
