@@ -77,3 +77,36 @@ X-Frame-Options: SAMEORIGIN
 **Plugin ID:** 10020
 
 ---
+
+### 🟡 Low Risk
+
+#### 3. Server Leaks Version Information via “Server” HTTP Response Header Field
+
+**Instances:** 4
+
+**URLs:**
+
+* [http://localhost:5001/robots.txt](http://localhost:5001/robots.txt)
+* [http://localhost:5001/sitemap.xml](http://localhost:5001/sitemap.xml)
+* [http://localhost:5001/team1f25/](http://localhost:5001/team1f25/)
+* [http://localhost:5001/team1f25/static/css/index.CIiu7Ygf.css](http://localhost:5001/team1f25/static/css/index.CIiu7Ygf.css)
+
+**Evidence:** TornadoServer/6.5.2
+
+**Description:**
+The server leaks version information through the `Server` HTTP header, which can help attackers identify vulnerabilities.
+
+**Solution:**
+Suppress or sanitize the `Server` header to remove version information.
+
+**References:**
+
+* [Apache: ServerTokens Directive](https://httpd.apache.org/docs/current/mod/core.html#servertokens)
+* [Microsoft Guidelines](https://learn.microsoft.com/en-us/previous-versions/msp-n-p/ff648552%28v=pandp.10%29)
+* [Troy Hunt: Response Headers](https://www.troyhunt.com/shhh-dont-let-your-response-headers/)
+
+**CWE ID:** 497
+**WASC ID:** 13
+**Plugin ID:** 10036
+
+---
