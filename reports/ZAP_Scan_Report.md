@@ -60,7 +60,6 @@ The response does not protect against Clickjacking. Missing either a `Content-Se
 
 **Solution:**  
 Add either:
-```http
 X-Frame-Options: DENY
 or
 Content-Security-Policy: frame-ancestors 'none'
