@@ -45,7 +45,7 @@ def _extract_full_date(text: str) -> Tuple[Optional[int], None]:
         y, mm, dd = m.groups()
         try:
             return int(f"{int(y):04d}{int(mm):02d}{int(dd):02d}"), None
-        except Exception as e:
+        except ValueError as e:
             logger.error(f"Error parsing date: {e}")
     return None, None
 
