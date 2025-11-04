@@ -21,7 +21,7 @@ jobs:
       pull-requests: write
 
     env:
-      BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.pull_request.head.ref || github.ref_name }}
+      BRANCH_NAME:  ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
       SCAN_DIR: .scan
       GRYPE_JSON: .scan/grype-report.json
       SBOM_FILE: bom.xml
