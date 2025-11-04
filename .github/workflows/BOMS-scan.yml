@@ -25,7 +25,7 @@ jobs:
       SCAN_DIR: .scan
       GRYPE_JSON: .scan/grype-report.json
       SBOM_FILE: bom.xml
-      REPORT_MD: docs/BOMS_Scan_Report.md
+      REPORT_MD: reports/BOMS_Scan_Report.md
 
     steps:
       - name: Checkout
