@@ -40,3 +40,14 @@ CSP helps detect and mitigate XSS and data-injection attacks. It allows the site
 
 **Solution:**  
 Configure your server or load balancer to set the `Content-Security-Policy` header.
+
+**References:**  
+- [MDN: CSP Guide](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP)  
+- [OWASP Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html)  
+- [W3C CSP Spec](https://www.w3.org/TR/CSP/)  
+- [Web.dev CSP Overview](https://web.dev/articles/csp)
+
+**CWE ID:** 693 | **WASC ID:** 15 | **Plugin ID:** 10038
+
+---
+
