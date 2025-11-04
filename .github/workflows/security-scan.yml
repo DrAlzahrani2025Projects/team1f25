@@ -124,13 +124,17 @@ jobs:
             echo "| Severity | CVE | Package | Ecosystem | Affected | Fixed | Description |"
             echo "|---|---|---|---|---|---|---|"
 
+            # Write rows to a temp file so we can detect empty/failed output
             jq -r '
-              def pkg_from_purl(p):
-                if (p // "") == "" then
-                  {eco:"N/A", name:"N/A", ver:"N/A"}
+              def purl_info(p):
+                if (p // "") == "" then {eco:"N/A", name:"N/A", ver:"N/A"}
                 else
-                  (p | capture("pkg:(?<type>[^/]+)/(?:(?<ns>[^/]+)/)?(?<name>[^@]+)@(?<ver>[^?]+)")) as $m
-                  | {eco:$m.type, name:$m.name, ver: ($m.ver | gsub("%2B"; "+") | gsub("%7E"; "~"))}
+                  (p | sub("^pkg:";"")) as $s
+                  | ($s | split("/")) as $parts
+                  | ($parts[0] // "unknown") as $eco
+                  | ($parts[-1] // "") as $last
+                  | ($last | split("@")) as $nv
+                  | {eco:$eco, name: ($nv[0] // "unknown"), ver: (($nv[1] // "" ) | split("?")[0] // "N/A")}
                 end;
 
               .runs[0] as $run
@@ -141,7 +145,7 @@ jobs:
                   . as $res
                   | ($rules_by_id[$res.ruleId] // {}) as $rule
                   | ($rule.properties.purls[0]? // "") as $purl
-                  | pkg_from_purl($purl) as $pkg
+                  | purl_info($purl) as $pkg
                   | {
                       sev: (($rule.properties.cvssV3_severity // $res.level // "N/A") | ascii_upcase),
                       cve: ($res.ruleId // "N/A"),
@@ -168,22 +172,33 @@ jobs:
               | reverse
               | .[]
               | "| \(.sev) | \(.cve) | \(.package) | \(.eco) | \(.affected) | \(.fixed) | \(.desc) |"
-            ' "$SCAN_JSON" || true
+            ' "$SCAN_JSON" > .scan/_rows.md || echo "__JQ_ERROR__" > .scan/_rows.md
 
-            COUNT=$(jq -r '(.runs[0].results // []) | length' "$SCAN_JSON" 2>/dev/null || echo 0)
-            if [ "$COUNT" = "0" ]; then
-              if jq -e 'has("_note")' "$SCAN_JSON" >/dev/null 2>&1; then
-                echo "| — | — | — | — | — | — | Scan skipped (no auth). |"
+            if grep -q "__JQ_ERROR__" .scan/_rows.md; then
+              echo "| — | — | — | — | — | — | (jq parse error; see logs) |"
+            elif [ ! -s .scan/_rows.md ]; then
+              # No rows emitted; decide whether it was truly empty or skipped/auth issue
+              COUNT="$(jq -r '(.runs[0].results // []) | length' "$SCAN_JSON" 2>/dev/null || echo 0)"
+              if [ "$COUNT" = "0" ]; then
+                if jq -e 'has("_note")' "$SCAN_JSON" >/dev/null 2>&1; then
+                  echo "| — | — | — | — | — | — | Scan skipped (no auth). |"
+                else
+                  echo "| — | — | — | — | — | — | No vulnerabilities found. |"
+                fi
               else
-                echo "| — | — | — | — | — | — | No vulnerabilities found. |"
+                echo "| — | — | — | — | — | — | No parsable items from SARIF. |"
               fi
+            else
+              cat .scan/_rows.md
             fi
+
             echo
             echo "_Legend: Severity from CVSS where available; otherwise SARIF level._"
             echo
             echo "---"
             echo "_Generated automatically by Docker Scout CLI (SARIF)_"
           } > docs/Docker_Scout_Report.md
+
 
       - name: Upload Markdown and SARIF JSON as artifacts
         uses: actions/upload-artifact@v4
