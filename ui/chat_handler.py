@@ -63,10 +63,19 @@ class ChatOrchestrator:
         
         logger.info(f"Search params - query: {search_query}, limit: {limit}, type: {resource_type}")
 
+        # If user explicitly answered 'any time' previously, don't ask again
+        date_any = st.session_state.user_requirements.get("date_any", False)
+
         # If no date information was provided, ask a clarifying question
-        if date_from is None and date_to is None:
+        if date_from is None and date_to is None and not date_any:
+            # use a properly pluralized resource label (default to 'articles')
+            if resource_type:
+                resource_label = resource_type if resource_type.endswith('s') else f"{resource_type}s"
+            else:
+                resource_label = "articles"
+
             clarifying = (
-                "When would you like the articles from? "
+                f"When would you like the {resource_label} from? "
                 "You can answer with examples like: 'last 5 years', '2015-2018', 'since 2019', or 'any time'."
             )
             st.markdown(clarifying)
@@ -76,6 +85,10 @@ class ChatOrchestrator:
             st.session_state.pending_search_params = params
             st.session_state.conversation_stage = "awaiting_date_range"
             return
+
+        # If the user had indicated 'any time', clear that transient flag now
+        if date_any:
+            st.session_state.user_requirements.pop("date_any", None)
 
         # Show search message
         self._display_search_message(search_query, limit, resource_type)
@@ -95,7 +108,9 @@ class ChatOrchestrator:
             parts.append(f"**{limit}**")
         
         if resource_type:
-            type_text = f"**{resource_type}s**" if limit != 1 else f"**{resource_type}**"
+            # avoid doubling an 's' if the resource_type is already plural
+            base = resource_type if resource_type.endswith('s') else f"{resource_type}s"
+            type_text = f"**{base}**" if limit != 1 else f"**{resource_type}**"
             parts.append(type_text)
         else:
             parts.append("resources")
@@ -157,11 +172,21 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
 
         # Parse the user's short reply for dates using the analyzer heuristics
         date_params = orchestrator.analyzer.extract_date_parameters(prompt)
-        # Update session-level user requirements so execute_search can pick them up
-        if "date_from" in date_params:
-            st.session_state.user_requirements["date_from"] = date_params.get("date_from")
-        if "date_to" in date_params:
-            st.session_state.user_requirements["date_to"] = date_params.get("date_to")
+
+        # If the user explicitly answered 'any time' (or similar), mark it so we don't re-ask
+        lower = prompt.strip().lower()
+        any_time_patterns = ["any time", "anytime", "no time", "no preference", "no date", "don't care", "dont care"]
+        is_any = any(p in lower for p in any_time_patterns)
+        if is_any:
+            st.session_state.user_requirements["date_from"] = None
+            st.session_state.user_requirements["date_to"] = None
+            st.session_state.user_requirements["date_any"] = True
+        else:
+            # Update session-level user requirements so execute_search can pick them up
+            if "date_from" in date_params:
+                st.session_state.user_requirements["date_from"] = date_params.get("date_from")
+            if "date_to" in date_params:
+                st.session_state.user_requirements["date_to"] = date_params.get("date_to")
 
         # reset awaiting state and resume the pending search
         pending_conv = st.session_state.pop("pending_conversation", None)

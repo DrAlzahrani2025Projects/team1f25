@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from datetime import datetime
 import calendar
+import logging
 import re
 from typing import Optional, Tuple
 
 MIN_YEAR = 1900
+logger = logging.getLogger(__name__)
 
 
 def _extract_year_range(text: str) -> Tuple[Optional[int], Optional[int]]:
@@ -43,8 +45,8 @@ def _extract_full_date(text: str) -> Tuple[Optional[int], None]:
         y, mm, dd = m.groups()
         try:
             return int(f"{int(y):04d}{int(mm):02d}{int(dd):02d}"), None
-        except Exception:
-            pass
+        except ValueError as e:
+            logger.error(f"Error parsing date: {e}")
     return None, None
 
 
@@ -61,11 +63,12 @@ def _extract_month_name_with_day_and_year(text: str) -> Tuple[Optional[int], Non
         try:
             try:
                 month_idx = datetime.strptime(mon, "%b").month if len(mon) == 3 else datetime.strptime(mon, "%B").month
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error parsing month name: {e}")
                 month_idx = datetime.strptime(mon[:3], "%b").month
             return int(f"{int(yr):04d}{int(month_idx):02d}{int(day):02d}"), None
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error extracting month/day/year: {e}")
     return None, None
 
 
@@ -82,8 +85,8 @@ def _extract_month_year(text: str) -> Tuple[Optional[int], None]:
         try:
             month_idx = datetime.strptime(mon[:3], "%b").month
             return int(f"{int(yr):04d}{int(month_idx):02d}01"), None
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error extracting month/year: {e}")
     return None, None
 
 
@@ -179,9 +182,20 @@ def _extract_single_year(text: str) -> Tuple[Optional[int], None]:
     Returns:
         Tuple[Optional[int], None]: (YYYY, None) or (None, None).
     """
+    # Look for explicit phrasing that indicates a closed single-year range
+    # e.g., 'in 2018', 'for 2018', 'during 2018' -> interpret as that full year
+    m_closed = re.search(r"\b(?:in|for|during|on)\s+(19|20)\d{2}\b", text)
+    if m_closed:
+        year = int(m_closed.group(0).split()[-1])
+        return year, year
+
+    # Default: bare year mention without explicit preposition -> treat as
+    # a year-bound lower bound (open-ended) so callers can decide how to
+    # expand or clamp (e.g., 'since 2018' or '1999').
     m = re.search(r"\b(19|20)\d{2}\b", text)
     if m:
-        return int(m.group(0)), None
+        year = int(m.group(0))
+        return year, None
     return None, None
 
 
