@@ -156,3 +156,24 @@ graph TB
     class Prompts,Dates,ErrorHandler,Logging utilClass
     class GroqAPI,PrimoAPI externalClass
 ```
+## Architecture Overview
+
+### Layer Descriptions
+
+#### 1. 🖥️ User Interface Layer (Streamlit)
+- **`app.py`**: Main application entry point and orchestrator
+- **`ChatOrchestrator`**: Handles user interactions and delegates to business services
+- **UI Components**: Renders sidebar, chat messages, and result tables
+- **Session State**: Manages conversation history, search results, and user preferences
+
+#### 2. 🧠 Core Business Logic
+**Services** (following Single Responsibility Principle):
+- **`ConversationAnalyzer`**: Extracts user intents, search parameters, and date filters from conversations
+- **`SearchService`**: Coordinates library searches with filtering and pagination
+- **`SuggestionService`**: Generates alternative search suggestions when no results found
+- **`ResultFormatter`**: Parses and formats search results for display
+
+**Interfaces** (Dependency Inversion Principle):
+- **`ILLMClient`**: Contract for Language Model interactions
+- **`ILibraryClient`**: Contract for library database access
+- **`IPromptProvider`**: Contract for prompt template management
