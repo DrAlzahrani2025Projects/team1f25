@@ -153,3 +153,20 @@ The application behaves as a modern web app or single-page app (SPA) with dynami
 **Plugin ID:** 10109
 
 ---
+
+#### 6. Tech Detected – TornadoServer
+
+**Instances:** 1
+**URL:** [http://localhost:5001/team1f25/static/css/index.CIiu7Ygf.css](http://localhost:5001/team1f25/static/css/index.CIiu7Ygf.css)
+**Evidence:** TornadoServer/6.5.2
+
+**Description:**
+Detected TornadoServer technology (version 6.5.2).
+
+**Solution:** Informational only.
+
+**Reference:** [Tornado Web Framework](https://tornadoweb.org)
+**WASC ID:** 13
+**Plugin ID:** 10004
+
+---
