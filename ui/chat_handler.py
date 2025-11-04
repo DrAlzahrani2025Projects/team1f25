@@ -14,7 +14,7 @@ from core.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
+# Initialize Groq client
 def initialize_groq_client() -> Optional[GroqClient]:
     """Initialize the Groq client for LLM interactions."""
     try:
@@ -102,7 +102,7 @@ class ChatOrchestrator:
 
         # Handle results
         self._handle_search_results(results, search_query, resource_type)
-    
+    # Display search initiation message
     def _display_search_message(self, query: str, limit: int, resource_type: Optional[str]):
         """Display search initiation message."""
         parts = ["Great! Let me search for"]
