@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from datetime import datetime
 import calendar
+import logging
 import re
 from typing import Optional, Tuple
 
 MIN_YEAR = 1900
+logger = logging.getLogger(__name__)
 
 
 def _extract_year_range(text: str) -> Tuple[Optional[int], Optional[int]]:
@@ -44,7 +46,7 @@ def _extract_full_date(text: str) -> Tuple[Optional[int], None]:
         try:
             return int(f"{int(y):04d}{int(mm):02d}{int(dd):02d}"), None
         except Exception as e:
-            import logging; logging.error(f"Error parsing date: {e}")
+            logger.error(f"Error parsing date: {e}")
     return None, None
 
 
