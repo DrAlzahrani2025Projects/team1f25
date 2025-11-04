@@ -110,3 +110,30 @@ Suppress or sanitize the `Server` header to remove version information.
 **Plugin ID:** 10036
 
 ---
+
+#### 4. X-Content-Type-Options Header Missing
+
+**Instances:** 2
+
+**URLs:**
+
+* [http://localhost:5001/team1f25/](http://localhost:5001/team1f25/)
+* [http://localhost:5001/team1f25/static/css/index.CIiu7Ygf.css](http://localhost:5001/team1f25/static/css/index.CIiu7Ygf.css)
+
+**Description:**
+The **X-Content-Type-Options** header was not set to `nosniff`. Without it, older browsers might MIME-sniff and misinterpret responses as another type.
+
+**Solution:**
+Add the following header to all responses:
+X-Content-Type-Options: nosniff
+
+**References:**
+
+* [Microsoft Docs](https://learn.microsoft.com/en-us/previous-versions/windows/internet-explorer/ie-developer/compatibility/gg622941%28v=vs.85%29)
+* [OWASP Security Headers](https://owasp.org/www-community/Security_Headers)
+
+**CWE ID:** 693
+**WASC ID:** 15
+**Plugin ID:** 10021
+
+---
