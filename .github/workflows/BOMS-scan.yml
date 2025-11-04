@@ -2,7 +2,6 @@ name: SBOM Scan with Grype
 on:
   push:
     branches: ["main"]
-  pull_request:
   workflow_dispatch:
 
 concurrency:
