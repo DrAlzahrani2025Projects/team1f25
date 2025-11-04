@@ -13,8 +13,8 @@ concurrency:
 
 jobs:
   report:
-    # 🛑 Best-practice safeguard against infinite loops:
-    # - Don't run if the commit was made by the Actions bot
+    # Safeguard against infinite loops:
+    # - Don't run if the committer is the Actions bot
     # - Don't run if the commit message is our auto-report commit
     if: github.actor != 'github-actions[bot]' && !contains((github.event.head_commit.message || ''), 'Add Docker Scout Report')
     name: Build image, scan, and write Markdown report
@@ -72,7 +72,7 @@ jobs:
       - name: Prepare scan dir
         run: mkdir -p "$SCAN_DIR"
 
-      # Run Scout only when authenticated (trusted contexts)
+      # Run Scout action (may not always write the file reliably)
       - name: Scan with Docker Scout (JSON output)
         id: scout
         if: >
@@ -83,14 +83,23 @@ jobs:
           command: cves
           image: ${{ steps.tag.outputs.val }}
           only-severities: critical,high
-          exit-code: false          # keep false so report always generates
-          output: ${{ env.SCAN_JSON }}
+          exit-code: false
+          output: ${{ env.SCAN_JSON }}  # desired path
           format: json
           summary: false
           write-comment: false
 
-      # Optional: always ensure a JSON exists so Markdown step never "skips"
-      - name: Ensure placeholder report.json if scan absent
+      # Fallback: if the action didn't create the file, use the CLI directly
+      - name: Fallback: write JSON via Docker Scout CLI if missing
+        if: always()
+        run: |
+          if [ ! -f "$SCAN_JSON" ]; then
+            echo "Scout JSON missing; generating via CLI fallback..."
+            docker scout cves "${{ steps.tag.outputs.val }}" --format json > "$SCAN_JSON" || true
+          fi
+
+      # Last resort: ensure a tiny placeholder so the Markdown step never 'skips'
+      - name: Ensure placeholder report.json if still absent
         if: always()
         run: |
           if [ ! -f "$SCAN_JSON" ]; then
