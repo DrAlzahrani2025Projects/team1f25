@@ -5,7 +5,7 @@ These abstract base classes define contracts that concrete implementations must 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union, Iterable
 
-
+# Interface for Language Model clients
 class ILLMClient(ABC):
     """Interface for Language Model clients."""
     
@@ -29,7 +29,7 @@ class ILLMClient(ABC):
         """Send a streaming chat request."""
         pass
 
-
+# Interface for embedding model clients
 class ILibraryClient(ABC):
     """Interface for library search clients."""
     
@@ -44,7 +44,7 @@ class ILibraryClient(ABC):
         """Search the library database."""
         pass
 
-
+# Interface for prompt providers
 class IPromptProvider(ABC):
     """Interface for providing AI prompts."""
     
