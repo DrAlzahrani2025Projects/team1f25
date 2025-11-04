@@ -25,7 +25,7 @@ st.set_page_config(
     layout="wide"
 )
 
-
+# Main application class
 class ScholarAIApp:
     """
     Main application class following SRP.
