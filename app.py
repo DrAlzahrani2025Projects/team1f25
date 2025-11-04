@@ -31,11 +31,11 @@ class ScholarAIApp:
     Main application class following SRP.
     Responsible only for application orchestration.
     """
-    
+    # Constructor
     def __init__(self):
         """Initialize the application."""
         self.groq_client = None
-    
+    # Setup method
     def setup(self) -> bool:
         """
         Setup application dependencies.
@@ -49,12 +49,12 @@ class ScholarAIApp:
             return False
         
         return True
-    
+    # Render header
     def render_header(self):
         """Render the application header."""
         st.title("📚 Scholar AI Assistant")
         st.markdown("*Your intelligent research companion for discovering academic resources*")
-    
+    # Handle sidebar actions
     def handle_sidebar_actions(self):
         """Handle sidebar interactions."""
         new_search = render_sidebar()
@@ -82,7 +82,7 @@ class ScholarAIApp:
         """Handle user chat input."""
         if prompt := st.chat_input("Enter your research query..."):
             handle_user_message(prompt, self.groq_client)
-    
+    # Main run method
     def run(self):
         """Run the main application loop."""
         # Setup
@@ -99,12 +99,12 @@ class ScholarAIApp:
         # Handle input
         self.handle_chat_input()
 
-
+# Application entry point
 def main():
     """Application entry point - Keep it simple (KISS)."""
     app = ScholarAIApp()
     app.run()
 
-
+# Entry point
 if __name__ == "__main__":
     main()
