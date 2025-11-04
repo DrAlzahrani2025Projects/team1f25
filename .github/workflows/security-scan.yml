@@ -17,9 +17,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    # Needed only to commit docs/ back to the repo on trusted events
     permissions:
-      contents: write
+      contents: write  # needed to commit docs/ on trusted events
 
     steps:
       - name: Checkout
@@ -44,15 +43,28 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Authenticate to Docker Hub only on trusted events (not forked PRs)
+      - name: Log in to Docker Hub
+        if: >
+          github.event_name != 'pull_request' ||
+          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Run Scout only when we’re authenticated (trusted contexts)
       - name: Scan with Docker Scout (JSON output)
         id: scout
+        if: >
+          github.event_name != 'pull_request' ||
+          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
         uses: docker/scout-action@v1
         with:
           command: cves
           image: ${{ steps.tag.outputs.val }}
           only-severities: critical,high
-          # keep false so the job always writes a report; set true to fail on High/Critical
-          exit-code: false
+          exit-code: false            # keep false so report always generates
           output: report.json
           format: json
           summary: false
@@ -72,8 +84,8 @@ jobs:
             echo "## 🐳 Image Scanned"
             echo "\`${{ steps.tag.outputs.val }}\`"
             echo
-            echo "## 🚨 Summary of High/Critical Vulnerabilities"
             if [ -f report.json ]; then
+              echo "## 🚨 Summary of High/Critical Vulnerabilities"
               echo
               echo "| Severity | Package | CVE | Description | Fixed In |"
               echo "|-----------|---------|-----|-------------|----------|"
@@ -93,8 +105,9 @@ jobs:
                 echo "| — | — | — | No High/Critical vulnerabilities found. | — |"
               fi
             else
+              echo "## ℹ️ Scan Skipped"
               echo
-              echo "_⚠️ No report.json file found._"
+              echo "_This run didn’t authenticate to Docker Hub (likely a PR from a fork), so Docker Scout was skipped to avoid exposing secrets. The report will include results on trusted runs (pushes, internal PRs)._"
             fi
             echo
             echo "---"
