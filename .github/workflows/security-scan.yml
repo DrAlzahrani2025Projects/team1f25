@@ -79,15 +79,31 @@ jobs:
           github.event_name != 'pull_request' ||
           (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
         run: |
-          # If CLI fails (e.g., entitlement), keep the job green and let the placeholder step handle it
-          docker scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" || true
+          echo "Running Docker Scout scan..."
+          if docker scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" 2>&1; then
+            echo "✓ Docker Scout scan completed successfully"
+            ls -lh "$SCAN_JSON"
+          else
+            echo "⚠ Docker Scout scan failed - this might be due to:"
+            echo "  - Missing Docker Hub authentication"
+            echo "  - No Docker Scout subscription"
+            echo "  - Network/API issues"
+            echo "Creating empty SARIF placeholder..."
+            echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}]}' > "$SCAN_JSON"
+          fi
 
       # Last resort: ensure a tiny placeholder so the Markdown step never 'skips'
       - name: Ensure placeholder report.json if absent
         if: always()
         run: |
           if [ ! -f "$SCAN_JSON" ]; then
-            echo '{"runs":[{"results":[]}] , "_note":"scan was skipped or failed to authenticate"}' > "$SCAN_JSON"
+            echo "⚠ SARIF file missing - creating placeholder"
+            echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}], "_note":"scan was skipped or failed"}' > "$SCAN_JSON"
+          elif [ ! -s "$SCAN_JSON" ]; then
+            echo "⚠ SARIF file is empty (0 bytes) - replacing with placeholder"
+            echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}], "_note":"scan produced empty output"}' > "$SCAN_JSON"
+          else
+            echo "✓ SARIF file exists and has content"
           fi
 
       - name: Debug SARIF file presence
@@ -189,12 +205,13 @@ jobs:
               COUNT="$(jq -r '(.runs[0].results // []) | length' "$SCAN_JSON" 2>/dev/null || echo 0)"
               if [ "$COUNT" = "0" ]; then
                 if jq -e 'has("_note")' "$SCAN_JSON" >/dev/null 2>&1; then
-                  echo "| — | — | — | — | — | — | Scan skipped (no auth). |"
+                  NOTE="$(jq -r '._note // "unknown reason"' "$SCAN_JSON")"
+                  echo "| — | — | — | — | — | — | ⚠ Scan skipped or failed: $NOTE |"
                 else
-                  echo "| — | — | — | — | — | — | No vulnerabilities found. |"
+                  echo "| — | — | — | — | — | — | ✓ No vulnerabilities found. |"
                 fi
               else
-                echo "| — | — | — | — | — | — | No parsable items from SARIF. |"
+                echo "| — | — | — | — | — | — | ⚠ Found $COUNT results but parsing failed. Check logs. |"
               fi
             else
               cat .scan/_rows.md
