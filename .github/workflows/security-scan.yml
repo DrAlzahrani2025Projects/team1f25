@@ -1,4 +1,4 @@
-name: Docker Scout Report
+name: Security Scan with Trivy
 on:
   push:
     branches: ["*"]
@@ -7,27 +7,27 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: docker-scout-${{ github.ref }}
+  group: security-scan-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  report:
-    # Prevent infinite re-triggers from our own "Add Docker Scout Report" commit
-    if: github.actor != 'github-actions[bot]' && !contains((github.event.head_commit.message || ''), 'Add Docker Scout Report')
-    name: Build image, scan with Docker Scout CLI, and write Markdown
+  security-scan:
+    name: Build image and scan with Trivy
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     permissions:
-      contents: write  # needed to commit docs/ on trusted events
+      contents: write
+      security-events: write
+      pull-requests: write  # needed to comment on PRs
 
     env:
       BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
       SCAN_DIR: .scan
-      SCAN_JSON: .scan/report.json
+      SCAN_JSON: .scan/trivy-report.json
 
     steps:
-      - name: Checkout (on real branch)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ env.BRANCH_NAME }}
@@ -42,7 +42,7 @@ jobs:
         id: tag
         run: echo "val=local/team1f25-streamlit:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
-      - name: Build image (local only; no push)
+      - name: Build image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -54,219 +54,106 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Prepare scan dir
+      - name: Prepare scan directory
         run: mkdir -p "$SCAN_DIR"
 
-      # Authenticate to Docker Hub only on trusted events (NOT forked PRs)
-      - name: Log in to Docker Hub
-        if: >
-          github.event_name != 'pull_request' ||
-          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
-        uses: docker/login-action@v3
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          image-ref: ${{ steps.tag.outputs.val }}
+          format: 'json'
+          output: ${{ env.SCAN_JSON }}
 
-      # Install Docker Scout CLI plugin (portable installer)
-      - name: Install Docker Scout CLI
-        run: |
-          echo "Installing Docker Scout CLI..."
-          curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh -o install-scout.sh
-          chmod +x install-scout.sh
-          sudo ./install-scout.sh -b /usr/local/bin
-          
-          echo "Verifying installation..."
-          if command -v docker-scout &> /dev/null; then
-            echo "✓ Docker Scout CLI installed successfully"
-            docker-scout version
-          else
-            echo "⚠ Docker Scout CLI installation failed"
-            echo "Available docker commands:"
-            docker --help | grep -A 20 "Management Commands" || true
-          fi
+      - name: Convert Trivy JSON to SARIF (for GitHub Security)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.tag.outputs.val }}
+          format: 'sarif'
+          output: '.scan/trivy.sarif'
 
-      # Run Docker Scout CLI to produce SARIF JSON (trusted contexts only)
-      - name: Export vulnerabilities to SARIF JSON via Docker Scout CLI
-        if: >
-          github.event_name != 'pull_request' ||
-          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
-        run: |
-          echo "Running Docker Scout scan..."
-          
-          # Try docker-scout command (standalone CLI)
-          if command -v docker-scout &> /dev/null; then
-            echo "Using docker-scout CLI..."
-            if docker-scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON.tmp" 2>&1; then
-              # Validate JSON before accepting it
-              if jq empty "$SCAN_JSON.tmp" 2>/dev/null; then
-                mv "$SCAN_JSON.tmp" "$SCAN_JSON"
-                echo "✓ Docker Scout scan completed successfully"
-                ls -lh "$SCAN_JSON"
-              else
-                echo "⚠ Docker Scout produced invalid JSON:"
-                cat "$SCAN_JSON.tmp"
-                echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}], "_note":"Invalid JSON output from Docker Scout"}' > "$SCAN_JSON"
-              fi
-            else
-              echo "⚠ Docker Scout scan failed with error:"
-              cat "$SCAN_JSON.tmp" 2>/dev/null || echo "No output"
-              echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}], "_note":"Docker Scout command failed"}' > "$SCAN_JSON"
-            fi
-          else
-            echo "⚠ Docker Scout CLI not available"
-            echo "Skipping scan - creating empty SARIF placeholder..."
-            echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}], "_note":"Docker Scout CLI not installed"}' > "$SCAN_JSON"
-          fi
-
-      # Last resort: ensure a tiny placeholder so the Markdown step never 'skips'
-      - name: Ensure placeholder report.json if absent
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
         if: always()
-        run: |
-          if [ ! -f "$SCAN_JSON" ]; then
-            echo "⚠ SARIF file missing - creating placeholder"
-            echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}], "_note":"scan was skipped or failed"}' > "$SCAN_JSON"
-          elif [ ! -s "$SCAN_JSON" ]; then
-            echo "⚠ SARIF file is empty (0 bytes) - replacing with placeholder"
-            echo '{"runs":[{"tool":{"driver":{"name":"docker scout"}},"results":[]}], "_note":"scan produced empty output"}' > "$SCAN_JSON"
-          else
-            echo "✓ SARIF file exists and has content"
-          fi
-
-      - name: Debug SARIF file presence
-        if: always()
-        run: |
-          echo "PWD: $(pwd)"
-          ls -la
-          echo "SCAN_DIR listing:"
-          ls -la "$SCAN_DIR" || true
-          if [ -f "$SCAN_JSON" ]; then
-            echo "Found $SCAN_JSON - file size:"
-            ls -lh "$SCAN_JSON"
-            echo "--- File contents (first 1000 chars) ---"
-            head -c 1000 "$SCAN_JSON" || true
-            echo
-            echo "--- Validating JSON ---"
-            if jq empty "$SCAN_JSON" 2>/dev/null; then
-              echo "✓ Valid JSON"
-              echo "Number of results: $(jq -r '.runs[0].results | length' "$SCAN_JSON" 2>/dev/null || echo 'N/A')"
-              echo "Number of rules: $(jq -r '.runs[0].tool.driver.rules | length' "$SCAN_JSON" 2>/dev/null || echo 'N/A')"
-            else
-              echo "✗ Invalid JSON - showing jq error:"
-              jq empty "$SCAN_JSON" 2>&1 || true
-            fi
-          else
-            echo "MISSING $SCAN_JSON"
-          fi
+        with:
+          sarif_file: '.scan/trivy.sarif'
 
       - name: Generate Markdown report
         if: always()
         run: |
           mkdir -p docs
           {
-            echo "# Docker Scout Security Vulnerability Report"
+            echo "# Security Vulnerability Scan Report"
             echo
             echo "**Date:** $(date -u)"
             echo "**Git SHA:** ${{ github.sha }}"
             echo "**Branch/Ref:** ${{ env.BRANCH_NAME }}"
+            echo "**Scanner:** Trivy"
             echo
             echo "## Image Scanned"
             echo "\`${{ steps.tag.outputs.val }}\`"
             echo
             echo "## Summary of Vulnerabilities"
             echo
-            echo "| Severity | CVE | Package | Ecosystem | Affected | Fixed | Description |"
-            echo "|---|---|---|---|---|---|---|"
 
-            # Write rows to a temp file so we can detect empty/failed output
-            jq -r '
-              def purl_info(p):
-                if (p // "") == "" then {eco:"N/A", name:"N/A", ver:"N/A"}
-                else
-                  (p | sub("^pkg:";"")) as $s
-                  | ($s | split("/")) as $parts
-                  | ($parts[0] // "unknown") as $eco
-                  | ($parts[-1] // "") as $last
-                  | ($last | split("@")) as $nv
-                  | {eco:$eco, name: ($nv[0] // "unknown"), ver: (($nv[1] // "" ) | split("?")[0] // "N/A")}
-                end;
+            # Count by severity
+            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
+            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
+            MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
+            LOW=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="LOW")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
+            UNKNOWN=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="UNKNOWN")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
+            TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW + UNKNOWN))
 
-              .runs[0] as $run
-              | ($run.tool.driver.rules // []) as $rules
-              | (reduce $rules[] as $r ({}; . + { ($r.id): $r })) as $rules_by_id
-              | ($run.results // [])
-              | map(
-                  . as $res
-                  | ($rules_by_id[$res.ruleId] // {}) as $rule
-                  | ($rule.properties.purls[0]? // "") as $purl
-                  | purl_info($purl) as $pkg
-                  | {
-                      sev: (($rule.properties.cvssV3_severity // $res.level // "N/A") | ascii_upcase),
-                      cve: ($res.ruleId // "N/A"),
-                      package: ($pkg.name + "@" + $pkg.ver),
-                      eco: $pkg.eco,
-                      affected: ($rule.properties.affected_version // "N/A"),
-                      fixed: ($rule.properties.fixed_version // "N/A"),
-                      desc: (
-                        ($rule.shortDescription.text // $rule.help.text // $res.message.text // "")
-                        | split("\n")[0]
-                        | gsub("^>\\s*"; "")
-                        | gsub("\\s+"; " ")
-                      )
-                    }
-                )
-              | sort_by(
-                  if .sev=="CRITICAL" then 5
-                  elif .sev=="HIGH" then 4
-                  elif .sev=="MEDIUM" then 3
-                  elif .sev=="LOW" then 2
-                  elif .sev=="WARNING" then 1
-                  else 0 end
-                )
-              | reverse
-              | .[]
-              | "| \(.sev) | \(.cve) | \(.package) | \(.eco) | \(.affected) | \(.fixed) | \(.desc) |"
-            ' "$SCAN_JSON" > .scan/_rows.md 2>.scan/_jq_errors.txt || echo "__JQ_ERROR__" > .scan/_rows.md
+            echo "| Severity | Count |"
+            echo "|----------|-------|"
+            echo "| 🔴 CRITICAL | $CRITICAL |"
+            echo "| 🟠 HIGH | $HIGH |"
+            echo "| 🟡 MEDIUM | $MEDIUM |"
+            echo "| 🔵 LOW | $LOW |"
+            echo "| ⚪ UNKNOWN | $UNKNOWN |"
+            echo "| **TOTAL** | **$TOTAL** |"
+            echo
 
-            if grep -q "__JQ_ERROR__" .scan/_rows.md; then
-              echo "| — | — | — | — | — | — | (jq parse error; see logs) |"
-              echo "JQ Error details:"
-              cat .scan/_jq_errors.txt 2>/dev/null || echo "No error details available"
-            elif [ ! -s .scan/_rows.md ]; then
-              # No rows emitted; decide whether it was truly empty or skipped/auth issue
-              COUNT="$(jq -r '(.runs[0].results // []) | length' "$SCAN_JSON" 2>/dev/null || echo 0)"
-              if [ "$COUNT" = "0" ]; then
-                if jq -e 'has("_note")' "$SCAN_JSON" >/dev/null 2>&1; then
-                  NOTE="$(jq -r '._note // "unknown reason"' "$SCAN_JSON")"
-                  echo "| — | — | — | — | — | — | ⚠ Scan skipped or failed: $NOTE |"
-                else
-                  echo "| — | — | — | — | — | — | ✓ No vulnerabilities found. |"
-                fi
-              else
-                echo "| — | — | — | — | — | — | ⚠ Found $COUNT results but parsing failed. Check logs. |"
-              fi
+            if [ "$TOTAL" -eq 0 ]; then
+              echo "✅ **No vulnerabilities found!**"
             else
-              cat .scan/_rows.md
+              echo "## Vulnerability Details"
+              echo
+              echo "| Severity | CVE | Package | Version | Fixed In | Title |"
+              echo "|---|---|---|---|---|---|"
+
+              # Extract and format vulnerabilities
+              jq -r '
+                [.Results[]?.Vulnerabilities[]? // empty]
+                | sort_by(
+                    if .Severity=="CRITICAL" then 5
+                    elif .Severity=="HIGH" then 4
+                    elif .Severity=="MEDIUM" then 3
+                    elif .Severity=="LOW" then 2
+                    else 1 end
+                  )
+                | reverse
+                | .[]
+                | "| \(.Severity) | \(.VulnerabilityID) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion // "not fixed") | \(.Title // .Description // "N/A" | split("\n")[0] | .[0:80]) |"
+              ' "$SCAN_JSON" 2>/dev/null || echo "| — | — | — | — | — | Error parsing vulnerabilities |"
             fi
 
             echo
-            echo "_Legend: Severity from CVSS where available; otherwise SARIF level._"
-            echo
             echo "---"
-            echo "_Generated automatically by Docker Scout CLI (SARIF)_"
-          } > docs/Docker_Scout_Report.md
+            echo "_Generated automatically by Trivy vulnerability scanner_"
+          } > docs/Security_Scan_Report.md
 
-
-      - name: Upload Markdown and SARIF JSON as artifacts
+      - name: Upload reports as artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: docker-scout-markdown-and-sarif
+          name: security-scan-reports
           path: |
-            docs/Docker_Scout_Report.md
-            ${{ env.SCAN_JSON }}
-          retention-days: 7
+            docs/Security_Scan_Report.md
+            .scan/trivy-report.json
+            .scan/trivy.sarif
+          retention-days: 30
 
-      # Commit report back to repo only on trusted contexts (not forked PRs)
-      - name: Commit Docker Scout Report
+      - name: Commit Security Report
         if: >
           ( github.event_name != 'pull_request' ) ||
           ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false )
@@ -274,6 +161,29 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin "${BRANCH_NAME}" || true
-          git add docs/Docker_Scout_Report.md
-          git commit -m "Add Docker Scout Report for ${{ github.sha }}" || echo "No changes to commit"
+          git add docs/Security_Scan_Report.md
+          git commit -m "Add Security Scan Report for ${{ github.sha }}" || echo "No changes to commit"
           git push origin HEAD:"${BRANCH_NAME}"
+
+      - name: Comment on PR with summary
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('docs/Security_Scan_Report.md', 'utf8');
+            
+            // Get first 2000 chars of report for comment
+            const summary = report.substring(0, 2000) + (report.length > 2000 ? '\n\n_...truncated. See full report in artifacts._' : '');
+            
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: summary
+              });
+            } catch (error) {
+              console.log('Failed to comment on PR:', error.message);
+            }
