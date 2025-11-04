@@ -86,7 +86,7 @@ def _extract_month_year(text: str) -> Tuple[Optional[int], None]:
             month_idx = datetime.strptime(mon[:3], "%b").month
             return int(f"{int(yr):04d}{int(month_idx):02d}01"), None
         except Exception as e:
-            import logging; logging.error(f"Error extracting month/year: {e}")
+            logger.error(f"Error extracting month/year: {e}")
     return None, None
 
 
