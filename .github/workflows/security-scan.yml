@@ -1,4 +1,5 @@
 name: Docker Scout Report
+
 on:
   push:
     branches: ["*"]
@@ -67,11 +68,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # Install Docker Scout CLI plugin (portable installer)
+      # Install Docker Scout CLI (binary called "docker-scout")
       - name: Install Docker Scout CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sudo sh -s -- -b /usr/local/bin
-          docker scout version || true
+          docker-scout version || true
 
       # Run Docker Scout CLI to produce SARIF JSON (trusted contexts only)
       - name: Export vulnerabilities to SARIF JSON via Docker Scout CLI
@@ -79,8 +80,7 @@ jobs:
           github.event_name != 'pull_request' ||
           (github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false)
         run: |
-          # If CLI fails (e.g., entitlement), keep the job green and let the placeholder step handle it
-          docker scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" || true
+          docker-scout cves --format sarif "${{ steps.tag.outputs.val }}" > "$SCAN_JSON" || true
 
       # Last resort: ensure a tiny placeholder so the Markdown step never 'skips'
       - name: Ensure placeholder report.json if absent
@@ -124,7 +124,6 @@ jobs:
             echo "| Severity | Rule ID | Location | Description |"
             echo "|-----------|---------|----------|-------------|"
             jq -r '
-              # SARIF: runs[].results[] with fields: ruleId, level, message.text, locations[].physicalLocation.artifactLocation.uri
               ( .runs[0].results // [] )
               | map({
                   severity: (.level // "none"),
