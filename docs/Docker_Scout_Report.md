@@ -1,16 +1,17 @@
-# 🧭 Docker Scout Security Vulnerability Report
+# Docker Scout Security Vulnerability Report
 
-**Date:** Tue Nov  4 03:00:45 UTC 2025
-**Git SHA:** 01594048c471031a4b09d116cc2635516b7ff04a
+**Date:** Tue Nov  4 03:16:31 UTC 2025
+**Git SHA:** 49031225cb6240a8aae09e3cde22ef2624bdc4a1
 **Branch/Ref:** maharshi1512/security-scan-workflow
 
-## 🐳 Image Scanned
-`local/team1f25-streamlit:01594048c471031a4b09d116cc2635516b7ff04a`
+## Image Scanned
+`local/team1f25-streamlit:49031225cb6240a8aae09e3cde22ef2624bdc4a1`
 
-## 🚨 Summary of High/Critical Vulnerabilities
+## Findings (from SARIF)
 
-| Severity | Package | CVE | Description | Fixed In |
-|-----------|---------|-----|-------------|----------|
+| Severity | Rule ID | Location | Description |
+|-----------|---------|----------|-------------|
+| — | — | — | Scan failed or no entitlement. |
 
 ---
-_Generated automatically by Docker Scout GitHub Action_
+_Generated automatically by Docker Scout CLI_
