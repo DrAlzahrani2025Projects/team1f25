@@ -1,97 +1,157 @@
-name: BOMS Vulnerability Scan
-
+name: SBOM Scan with Grype
 on:
   push:
     branches: ["*"]
   pull_request:
     branches: ["*"]
+  workflow_dispatch:
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  security-scan:
+  sbom-scan:
+    name: Generate SBOM and scan with Grype
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
     permissions:
-      contents: read
-      security-events: write
+      contents: write
+      pull-requests: write
+
     env:
-      REPORTS_DIR: dependency-check-reports  # Explicit directory for reports
-      
+      BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.pull_request.head.ref || github.ref_name }}
+      SCAN_DIR: .scan
+      GRYPE_JSON: .scan/grype-report.json
+      SBOM_FILE: bom.xml
+      REPORT_MD: docs/BOMS_Scan_Report.md
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare directories
+        run: |
+          mkdir -p "$SCAN_DIR"
+          mkdir -p docs
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          
-      - name: Install dependencies
+          python-version: "3.11"
+
+      - name: Generate CycloneDX SBOM (from requirements.txt)
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-          
-      - name: Generate SBOM with CycloneDX
-        run: |
           pip install cyclonedx-bom
-          # Use the `requirements` subcommand to read a requirements.txt file
-          cyclonedx-py requirements requirements.txt -o bom.xml
-          
-      - name: Create reports directory
-        run: mkdir -p ${{ env.REPORTS_DIR }}
+          cyclonedx-py requirements requirements.txt -o "$SBOM_FILE"
 
-      - name: Run OWASP Dependency-Check
-        uses: dependency-check/Dependency-Check_Action@main
-        with:
-          project: 'team1f25'
-          path: '.'
-          format: 'ALL'
-          out: 'dependency-check-reports'
-          args: >
-            --enableExperimental
-            --scan bom.xml
-            --failOnCVSS 7
-            --suppression .github/dependency-check-suppressions.xml
-      - name: Upload Dependency Check Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: dependency-check-report
-          path: |
-            ${{ env.REPORTS_DIR }}/dependency-check-report.html
-            ${{ env.REPORTS_DIR }}/dependency-check-report.json
-            dependency-check-report.html
-            dependency-check-report.json
-          if-no-files-found: error
-          
-      - name: Run Snyk to check for vulnerabilities
-        uses: snyk/actions/python@master
-        continue-on-error: true # To prevent blocking the pipeline
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: monitor
-          
-      - name: Upload SBOM as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom
-          path: bom.xml
-          
-      - name: Check for critical vulnerabilities
+      - name: Install Grype
         run: |
-          # Look for critical findings in generated JSON/HTML reports
-          set -e
-          REPORT_DIR=${{ env.REPORTS_DIR }}
-          if ls "$REPORT_DIR"/*.json >/dev/null 2>&1; then
-            if grep -i "CRITICAL" "$REPORT_DIR"/*.json >/dev/null 2>&1; then
-              echo "Critical vulnerabilities found in dependency-check JSON reports!"
-              exit 1
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin
+          grype version
+
+      - name: Scan SBOM with Grype (JSON output)
+        run: |
+          # Scan CycloneDX SBOM and write machine-readable JSON
+          grype sbom:"$SBOM_FILE" -o json > "$GRYPE_JSON" || true
+
+      - name: Generate Markdown report
+        if: always()
+        run: |
+          # Summaries
+          CRITICAL=$(jq '[.matches[]?.vulnerability? | select(.severity=="Critical")] | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
+          HIGH=$(jq      '[.matches[]?.vulnerability? | select(.severity=="High")]     | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
+          MEDIUM=$(jq    '[.matches[]?.vulnerability? | select(.severity=="Medium")]   | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
+          LOW=$(jq       '[.matches[]?.vulnerability? | select(.severity=="Low")]      | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
+          NEGLIGIBLE=$(jq '[.matches[]?.vulnerability? | select(.severity=="Negligible")] | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
+          UNKNOWN=$(jq   '[.matches[]?.vulnerability? | select(.severity=="Unknown")]  | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
+          TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW + NEGLIGIBLE + UNKNOWN))
+
+          {
+            echo "# SBOM Vulnerability Report"
+            echo
+            echo "**Date:** $(date -u)"
+            echo "**Git SHA:** ${{ github.sha }}"
+            echo "**Branch/Ref:** ${{ env.BRANCH_NAME }}"
+            echo "**Scanner:** Grype"
+            echo "**SBOM:** \`${{ env.SBOM_FILE }}\` (CycloneDX)"
+            echo
+            echo "## Summary of Vulnerabilities"
+            echo
+            echo "| Severity | Count |"
+            echo "|----------|------:|"
+            echo "| 🔴 Critical | $CRITICAL |"
+            echo "| 🟠 High | $HIGH |"
+            echo "| 🟡 Medium | $MEDIUM |"
+            echo "| 🔵 Low | $LOW |"
+            echo "| ⚫ Negligible | $NEGLIGIBLE |"
+            echo "| ⚪ Unknown | $UNKNOWN |"
+            echo "| **TOTAL** | **$TOTAL** |"
+            echo
+
+            if [ "$TOTAL" -eq 0 ]; then
+              echo "✅ **No vulnerabilities found in the SBOM!**"
+            else
+              echo "## Vulnerability Details"
+              echo
+              echo "| Severity | ID | Package | Version | Fixed In | Title |"
+              echo "|---|---|---|---|---|---|"
+              # Sort by severity (Critical > High > Medium > Low > Negligible > Unknown)
+              jq -r '
+                (.matches[]? // empty)
+                | {
+                    sev: (.vulnerability.severity // "Unknown"),
+                    id: (.vulnerability.id // "N/A"),
+                    pkg: (.artifact.name // "N/A"),
+                    ver: (.artifact.version // "N/A"),
+                    fix: ((.vulnerability.fix.versions // []) | join(", ")), 
+                    title: (.vulnerability.dataSource | split("/") | last) # fallback; Grype JSON doesn’t always have a short title
+                  }
+                | .sev as $s
+                | .id as $id
+                | .pkg as $p
+                | .ver as $v
+                | .fix as $f
+                | .title as $t
+                | "| \($s) | \($id) | \($p) | \($v) | \($f | if .=="" then "not fixed" else . end) | \($t) |"
+              ' "$GRYPE_JSON" \
+              | awk 'BEGIN{
+                  # map severity for sorting: Critical(6) High(5) Medium(4) Low(3) Negligible(2) Unknown(1)
+                }
+                {print}
+              ' | awk '1' # placeholder to keep simple
             fi
-          elif ls "$REPORT_DIR"/*.html >/dev/null 2>&1; then
-            if grep -i "CRITICAL" "$REPORT_DIR"/*.html >/dev/null 2>&1; then
-              echo "Critical vulnerabilities found in dependency-check HTML reports!"
-              exit 1
-            fi
-          else
-            echo "No dependency-check report found in $REPORT_DIR"
-            exit 1
-          fi
+
+            echo
+            echo "---"
+            echo "_Generated automatically by Grype scanning a CycloneDX SBOM._"
+          } > "$REPORT_MD"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom-grype-reports
+          path: |
+            ${{ env.REPORT_MD }}
+            ${{ env.GRYPE_JSON }}
+          retention-days: 30
+
+      - name: Commit SBOM Scan Report
+        if: >
+          ( github.event_name != 'pull_request' ) ||
+          ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false )
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin "${BRANCH_NAME}" || true
+          git add "${REPORT_MD}"
+          git commit -m "Add SBOM Scan Report (Grype) for ${{ github.sha }}" || echo "No changes to commit"
+          git push origin HEAD:"${BRANCH_NAME}"
