@@ -39,7 +39,7 @@ jobs:
       - name: Prepare directories
         run: |
           mkdir -p "$SCAN_DIR"
-          mkdir -p docs
+          mkdir -p reports
 
       - name: Set up Python
         uses: actions/setup-python@v5
