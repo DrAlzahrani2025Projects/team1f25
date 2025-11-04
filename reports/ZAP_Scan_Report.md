@@ -51,3 +51,29 @@ Configure your server or load balancer to set the `Content-Security-Policy` head
 
 ---
 
+#### 2. Missing Anti-Clickjacking Header
+**Instances:** 1  
+**URL:** `http://localhost:5001/team1f25/`
+
+**Description:**  
+The response does not protect against Clickjacking. Missing either a `Content-Security-Policy` (`frame-ancestors`) or an `X-Frame-Options` header.
+
+**Solution:**  
+Add either:
+```http
+X-Frame-Options: DENY
+or
+Content-Security-Policy: frame-ancestors 'none'
+
+If the page should only be framed by your own site, use:
+X-Frame-Options: SAMEORIGIN
+
+**References:**
+
+* [MDN: X-Frame-Options Header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Frame-Options)
+
+**CWE ID:** 1021
+**WASC ID:** 15
+**Plugin ID:** 10020
+
+---
