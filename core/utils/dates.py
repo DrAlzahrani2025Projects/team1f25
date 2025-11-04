@@ -7,10 +7,12 @@ from __future__ import annotations
 
 from datetime import datetime
 import calendar
+import logging
 import re
 from typing import Optional, Tuple
 
 MIN_YEAR = 1900
+logger = logging.getLogger(__name__)
 
 
 def _extract_year_range(text: str) -> Tuple[Optional[int], Optional[int]]:
@@ -43,8 +45,8 @@ def _extract_full_date(text: str) -> Tuple[Optional[int], None]:
         y, mm, dd = m.groups()
         try:
             return int(f"{int(y):04d}{int(mm):02d}{int(dd):02d}"), None
-        except Exception:
-            pass
+        except ValueError as e:
+            logger.error(f"Error parsing date: {e}")
     return None, None
 
 
@@ -61,11 +63,12 @@ def _extract_month_name_with_day_and_year(text: str) -> Tuple[Optional[int], Non
         try:
             try:
                 month_idx = datetime.strptime(mon, "%b").month if len(mon) == 3 else datetime.strptime(mon, "%B").month
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error parsing month name: {e}")
                 month_idx = datetime.strptime(mon[:3], "%b").month
             return int(f"{int(yr):04d}{int(month_idx):02d}{int(day):02d}"), None
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error extracting month/day/year: {e}")
     return None, None
 
 
@@ -82,8 +85,8 @@ def _extract_month_year(text: str) -> Tuple[Optional[int], None]:
         try:
             month_idx = datetime.strptime(mon[:3], "%b").month
             return int(f"{int(yr):04d}{int(month_idx):02d}01"), None
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error extracting month/year: {e}")
     return None, None
 
 
