@@ -61,10 +61,11 @@ jobs:
       - name: Update Grype DB
         run: grype db update -q
 
-      - name: Scan SBOM with Grype and generate SARIF report
+      - name: Scan repository with Grype and generate SARIF report
+        # Scanning the repo directory ensures SARIF includes artifact locations that GitHub Code Scanning accepts
         continue-on-error: true
         run: |
-          grype sbom:"${{ env.SBOM }}" -o sarif > "${{ env.REPORT_SARIF }}"
+          grype dir:. -o sarif > "${{ env.REPORT_SARIF }}"
 
       - name: Upload SARIF to code scanning
         if: always()
