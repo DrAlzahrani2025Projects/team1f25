@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: security-scan-${{ github.ref }}
+  group: docker-scan-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -15,30 +15,16 @@ jobs:
     timeout-minutes: 20
 
     permissions:
-      contents: write
+      contents: read
       security-events: write
-      pull-requests: write  # needed to comment on PRs
 
     env:
-      BRANCH_NAME: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+      IMAGE: local/team1f25-streamlit:${{ github.sha }}
       SCAN_DIR: .scan
-      SCAN_JSON: .scan/trivy-report.json
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ env.BRANCH_NAME }}
-          fetch-depth: 0
-          persist-credentials: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Choose local tag
-        id: tag
-        run: echo "val=local/team1f25-streamlit:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Build image
         uses: docker/build-push-action@v6
@@ -47,118 +33,22 @@ jobs:
           file: docker/Dockerfile
           platforms: linux/amd64
           load: true
-          push: false
-          tags: ${{ steps.tag.outputs.val }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ env.IMAGE }}
 
       - name: Prepare scan directory
-        run: mkdir -p "$SCAN_DIR"
+        run: mkdir -p "${{ env.SCAN_DIR }}"
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+      - name: Run Trivy vulnerability scanner (SARIF)
+        # Pinned to commit for security; corresponds to trivy-action 0.33.1
+        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8
         with:
-          image-ref: ${{ steps.tag.outputs.val }}
-          format: 'json'
-          output: ${{ env.SCAN_JSON }}
-
-      - name: Convert Trivy JSON to SARIF (for GitHub Security)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ steps.tag.outputs.val }}
+          image-ref: ${{ env.IMAGE }}
           format: 'sarif'
-          output: '.scan/trivy.sarif'
+          output: '${{ env.SCAN_DIR }}/trivy.sarif'
 
       - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: '.scan/trivy.sarif'
-
-      - name: Generate Markdown report
-        if: always()
-        run: |
-          mkdir -p reports
-          {
-            echo "# Docker Scan Vulnerability Report"
-            echo
-            echo "**Date:** $(date -u)"
-            echo "**Git SHA:** ${{ github.sha }}"
-            echo "**Branch/Ref:** ${{ env.BRANCH_NAME }}"
-            echo "**Scanner:** Trivy"
-            echo
-            echo "## Image Scanned"
-            echo "\`${{ steps.tag.outputs.val }}\`"
-            echo
-            echo "## Summary of Vulnerabilities"
-            echo
-
-            # Count by severity
-            CRITICAL=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
-            HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
-            MEDIUM=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="MEDIUM")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
-            LOW=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="LOW")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
-            UNKNOWN=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="UNKNOWN")] | length' "$SCAN_JSON" 2>/dev/null || echo 0)
-            TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW + UNKNOWN))
-
-            echo "| Severity | Count |"
-            echo "|----------|-------|"
-            echo "| 🔴 CRITICAL | $CRITICAL |"
-            echo "| 🟠 HIGH | $HIGH |"
-            echo "| 🟡 MEDIUM | $MEDIUM |"
-            echo "| 🔵 LOW | $LOW |"
-            echo "| ⚪ UNKNOWN | $UNKNOWN |"
-            echo "| **TOTAL** | **$TOTAL** |"
-            echo
-
-            if [ "$TOTAL" -eq 0 ]; then
-              echo "✅ **No vulnerabilities found!**"
-            else
-              echo "## Vulnerability Details"
-              echo
-              echo "| Severity | CVE | Package | Version | Fixed In | Title |"
-              echo "|---|---|---|---|---|---|"
-
-              # Extract and format vulnerabilities
-              jq -r '
-                [.Results[]?.Vulnerabilities[]? // empty]
-                | sort_by(
-                    if .Severity=="CRITICAL" then 5
-                    elif .Severity=="HIGH" then 4
-                    elif .Severity=="MEDIUM" then 3
-                    elif .Severity=="LOW" then 2
-                    else 1 end
-                  )
-                | reverse
-                | .[]
-                | "| \(.Severity) | \(.VulnerabilityID) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion // "not fixed") | \(.Title // .Description // "N/A" | split("\n")[0] | .[0:80]) |"
-              ' "$SCAN_JSON" 2>/dev/null || echo "| — | — | — | — | — | Error parsing vulnerabilities |"
-            fi
-
-            echo
-            echo "---"
-            echo "_Generated automatically by Trivy vulnerability scanner_"
-          } > reports/Docker_Scan_Report.md
-
-      - name: Upload reports as artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: security-scan-reports
-          path: |
-            reports/Docker_Scan_Report.md
-            .scan/trivy-report.json
-            .scan/trivy.sarif
-          retention-days: 30
-
-      - name: Commit Security Report
-        if: >
-          ( github.event_name != 'pull_request' ) ||
-          ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false )
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin "${BRANCH_NAME}" || true
-          git add reports/Docker_Scan_Report.md
-          git commit -m "Add Docker Scan Report for ${{ github.sha }}" || echo "No changes to commit"
-          git push origin HEAD:"${BRANCH_NAME}"
+          sarif_file: '${{ env.SCAN_DIR }}/trivy.sarif'
+          category: trivy

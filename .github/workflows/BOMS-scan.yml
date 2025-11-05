@@ -5,151 +5,47 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: security-scan-${{ github.ref }}
+  group: boms-scan-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   sbom-scan:
-    name: Generate SBOM and scan with Grype
+    name: Scan repository with Grype
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     permissions:
-      contents: write
-      pull-requests: write
-
-    env:
-      BRANCH_NAME:  ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
-      SCAN_DIR: .scan
-      GRYPE_JSON: .scan/grype-report.json
-      SBOM_FILE: bom.xml
-      REPORT_MD: reports/BOMS_Scan_Report.md
+      contents: read
+      security-events: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ env.BRANCH_NAME }}
-          fetch-depth: 0
-          persist-credentials: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare directories
-        run: |
-          mkdir -p "$SCAN_DIR"
-          mkdir -p reports
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Generate CycloneDX SBOM (from requirements.txt)
-        run: |
-          python -m pip install --upgrade pip
-          pip install cyclonedx-bom
-          cyclonedx-py requirements requirements.txt -o "$SBOM_FILE"
 
       - name: Install Grype
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sudo sh -s -- -b /usr/local/bin
           grype version
 
-      - name: Scan SBOM with Grype (JSON output)
-        run: |
-          # Scan CycloneDX SBOM and write machine-readable JSON
-          grype sbom:"$SBOM_FILE" -o json > "$GRYPE_JSON" || true
-
-      - name: Generate Markdown report
-        if: always()
-        run: |
-          # Summaries
-          CRITICAL=$(jq '[.matches[]?.vulnerability? | select(.severity=="Critical")] | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
-          HIGH=$(jq      '[.matches[]?.vulnerability? | select(.severity=="High")]     | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
-          MEDIUM=$(jq    '[.matches[]?.vulnerability? | select(.severity=="Medium")]   | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
-          LOW=$(jq       '[.matches[]?.vulnerability? | select(.severity=="Low")]      | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
-          NEGLIGIBLE=$(jq '[.matches[]?.vulnerability? | select(.severity=="Negligible")] | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
-          UNKNOWN=$(jq   '[.matches[]?.vulnerability? | select(.severity=="Unknown")]  | length' "$GRYPE_JSON" 2>/dev/null || echo 0)
-          TOTAL=$((CRITICAL + HIGH + MEDIUM + LOW + NEGLIGIBLE + UNKNOWN))
-
-          {
-            echo "# SBOM Vulnerability Report"
-            echo
-            echo "**Date:** $(date -u)"
-            echo "**Git SHA:** ${{ github.sha }}"
-            echo "**Branch/Ref:** ${{ env.BRANCH_NAME }}"
-            echo "**Scanner:** Grype"
-            echo "**SBOM:** \`${{ env.SBOM_FILE }}\` (CycloneDX)"
-            echo
-            echo "## Summary of Vulnerabilities"
-            echo
-            echo "| Severity | Count |"
-            echo "|----------|------:|"
-            echo "| 🔴 Critical | $CRITICAL |"
-            echo "| 🟠 High | $HIGH |"
-            echo "| 🟡 Medium | $MEDIUM |"
-            echo "| 🔵 Low | $LOW |"
-            echo "| ⚫ Negligible | $NEGLIGIBLE |"
-            echo "| ⚪ Unknown | $UNKNOWN |"
-            echo "| **TOTAL** | **$TOTAL** |"
-            echo
-
-            if [ "$TOTAL" -eq 0 ]; then
-              echo "✅ **No vulnerabilities found in the SBOM!**"
-            else
-              echo "## Vulnerability Details"
-              echo
-              echo "| Severity | ID | Package | Version | Fixed In | Title |"
-              echo "|---|---|---|---|---|---|"
-              # Sort by severity (Critical > High > Medium > Low > Negligible > Unknown)
-              jq -r '
-                (.matches[]? // empty)
-                | {
-                    sev: (.vulnerability.severity // "Unknown"),
-                    id: (.vulnerability.id // "N/A"),
-                    pkg: (.artifact.name // "N/A"),
-                    ver: (.artifact.version // "N/A"),
-                    fix: ((.vulnerability.fix.versions // []) | join(", ")), 
-                    title: (.vulnerability.dataSource | split("/") | last) # fallback; Grype JSON doesn’t always have a short title
-                  }
-                | .sev as $s
-                | .id as $id
-                | .pkg as $p
-                | .ver as $v
-                | .fix as $f
-                | .title as $t
-                | "| \($s) | \($id) | \($p) | \($v) | \($f | if .=="" then "not fixed" else . end) | \($t) |"
-              ' "$GRYPE_JSON" \
-              | awk 'BEGIN{
-                  # map severity for sorting: Critical(6) High(5) Medium(4) Low(3) Negligible(2) Unknown(1)
-                }
-                {print}
-              ' | awk '1' # placeholder to keep simple
-            fi
-
-            echo
-            echo "---"
-            echo "_Generated automatically by Grype scanning a CycloneDX SBOM._"
-          } > "$REPORT_MD"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Cache Grype DB
+        uses: actions/cache@v4
         with:
-          name: sbom-grype-reports
-          path: |
-            ${{ env.REPORT_MD }}
-            ${{ env.GRYPE_JSON }}
-          retention-days: 30
+          path: ~/.cache/grype
+          key: grype-db-${{ runner.os }}-v1
 
-      - name: Commit SBOM Scan Report
-        if: >
-          ( github.event_name != 'pull_request' ) ||
-          ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false )
+      - name: Update Grype DB
+        run: grype db update -q
+
+      - name: Scan repository with Grype and generate SARIF report
+        # Scanning the repo directory ensures SARIF includes artifact locations that GitHub Code Scanning accepts
+        continue-on-error: true
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin "${BRANCH_NAME}" || true
-          git add "${REPORT_MD}"
-          git commit -m "Add SBOM Scan Report (Grype) for ${{ github.sha }}" || echo "No changes to commit"
-          git push origin HEAD:"${BRANCH_NAME}"
+          mkdir -p .scan
+          grype dir:. -o sarif > .scan/grype-report.sarif
+
+      - name: Upload SARIF to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: .scan/grype-report.sarif
+          category: grype
