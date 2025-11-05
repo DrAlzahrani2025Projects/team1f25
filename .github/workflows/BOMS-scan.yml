@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   sbom-scan:
-    name: Generate SBOM and scan with Grype
+    name: Scan repository with Grype
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -20,32 +20,9 @@ jobs:
       contents: read
       security-events: write
 
-    env:
-      SCAN_DIR: .scan
-      SBOM: .scan/bom.xml
-      REPORT_SARIF: .scan/grype-report.sarif
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Prepare directories
-        run: |
-          mkdir -p "${{ env.SCAN_DIR }}"
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: "requirements.txt"
-
-      - name: Generate CycloneDX SBOM
-        run: |
-          test -f requirements.txt || (echo "requirements.txt not found" && exit 1)
-          python -m pip install --upgrade pip
-          pip install cyclonedx-bom
-          cyclonedx-py requirements requirements.txt -o "${{ env.SBOM }}"
 
       - name: Install Grype
         run: |
@@ -65,11 +42,12 @@ jobs:
         # Scanning the repo directory ensures SARIF includes artifact locations that GitHub Code Scanning accepts
         continue-on-error: true
         run: |
-          grype dir:. -o sarif > "${{ env.REPORT_SARIF }}"
+          mkdir -p .scan
+          grype dir:. -o sarif > .scan/grype-report.sarif
 
       - name: Upload SARIF to code scanning
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: ${{ env.REPORT_SARIF }}
+          sarif_file: .scan/grype-report.sarif
           category: grype
