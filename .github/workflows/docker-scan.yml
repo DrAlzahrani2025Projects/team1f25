@@ -22,4 +22,8 @@ jobs:
       IMAGE: local/team1f25-streamlit:${{ github.sha }}
       SCAN_DIR: .scan
 
-    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+     
