@@ -6,7 +6,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip to specific version for security
+RUN python -m pip install --upgrade pip==25.3 && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
 COPY core/ core/
