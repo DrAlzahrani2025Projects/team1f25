@@ -34,3 +34,8 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: ${{ env.IMAGE }}
+
+      - name: Prepare scan directory
+        run: mkdir -p "${{ env.SCAN_DIR }}"
+
+      
