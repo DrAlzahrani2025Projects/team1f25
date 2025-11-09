@@ -8,3 +8,10 @@ concurrency:
   group: docker-scan-${{ github.ref }}
   cancel-in-progress: true
 
+jobs:
+  security-scan:
+    name: Build image and scan with Trivy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    
