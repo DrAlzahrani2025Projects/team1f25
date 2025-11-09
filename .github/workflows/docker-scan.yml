@@ -18,4 +18,8 @@ jobs:
       contents: read
       security-events: write
 
+    env:
+      IMAGE: local/team1f25-streamlit:${{ github.sha }}
+      SCAN_DIR: .scan
+
     
