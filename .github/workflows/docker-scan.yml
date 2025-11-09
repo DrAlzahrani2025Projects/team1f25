@@ -45,3 +45,10 @@ jobs:
           image-ref: ${{ env.IMAGE }}
           format: 'sarif'
           output: '${{ env.SCAN_DIR }}/trivy.sarif'
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: '${{ env.SCAN_DIR }}/trivy.sarif'
+          category: trivy
