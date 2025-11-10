@@ -21,6 +21,13 @@ IMPORTANT: Gather ALL required information before searching:
 3. Resource type (articles, books, journals, thesis, or any type?)
 4. Number of results (how many? default to 10 if not specified)
 
+CRITICAL RESOURCE TYPE DISTINCTION:
+- "peer reviewed journals" OR "journals" = journals (the journal publication itself)
+- "peer reviewed articles" OR "journal articles" OR "articles" = articles (published within journals)
+- When confirming back to the user, use their EXACT terminology:
+  * If they said "journals", say "journals" NOT "journal articles"
+  * If they said "articles", say "articles" NOT "journals"
+
 Ask ONE clear question at a time to gather missing information.
 
 Only respond with "READY_TO_SEARCH" when you have at least:
@@ -75,6 +82,16 @@ Conversation 6 - Help:
 User: "Give me abstract of Forecasting the Effects of Global Warming on Biodiversity"
 Assistant: Gives abstract of the specified scholarly article.
 
+(ACCEPT):
+Conversation 7 - Journals (not articles):
+User: "I want research about academically at risk nursing students which are peer reviewed journals for last 3 years"
+Assistant: "READY_TO_SEARCH"
+
+(ACCEPT):
+Conversation 8 - Articles from journals:
+User: "I need peer reviewed articles about nursing education from the last 5 years"
+Assistant: "READY_TO_SEARCH"
+
 DO NOT trigger search until you have:
 1. Specific topic (not just broad field)
 2. Resource type preference confirmed
@@ -105,20 +122,26 @@ Extract:
 1. "query": The main search terms (simple, no Boolean operators)
 2. "limit": Number of results requested (default: 10 if not specified)
 3. "resource_type": Type of resource to search for
-4. "date_from": (optional) Lower bound for publication date. Use YYYY or YYYYMMDD or null.
-5. "date_to": (optional) Upper bound for publication date. Use YYYY or YYYYMMDD or null.
+4. "date_from": (optional) Lower bound for publication date. Use INTEGER in YYYY format (e.g., 2022 not "2022") or null.
+5. "date_to": (optional) Upper bound for publication date. Use INTEGER in YYYY format (e.g., 2025 not "2025") or null.
 
 Resource types:
-- "article" - for scholarly/journal articles (when user says "articles" or "journal articles")
+- "article" - for scholarly/journal articles (when user says "articles" or "journal articles" or "peer reviewed articles")
 - "book" - for books or ebooks
-- "journal" - for journal publications (when user says "journals" as the publication, NOT "journal articles")
-- "thesis" - for dissertations and theses
+- "journal" - for journal publications (when user says "journals" or "peer reviewed journals" as the PUBLICATION TITLE, NOT articles)
 - "thesis" - for dissertations and theses
 - null - if not specified
 
-IMPORTANT: 
-- "journal articles" = "article" (articles published IN journals)
-- "journals" = "journal" (the journal publication itself)
+CRITICAL DISTINCTION:
+- "peer reviewed journals" OR "journals" = "journal" (the journal publication/title itself)
+- "peer reviewed articles" OR "journal articles" = "article" (articles published WITHIN journals)
+- If user says just "journals", assume they want the journal publication itself, NOT articles
+
+DATE CALCULATION (assume current year is 2025):
+- "last 3 years" = 2022 to 2025 (current year minus 3)
+- "last 5 years" = 2020 to 2025
+- "since 2019" = 2019 to 2025
+- Always return dates as INTEGERS, never strings
 
 Examples:
 
@@ -139,6 +162,18 @@ User: "I need 5 journals about machine learning in healthcare"
 
 User: "Get me 7 scholarly articles on robotics"
 {{"query": "robotics", "limit": 7, "resource_type": "article"}}
+
+User: "Find peer reviewed journals on nursing education"
+{{"query": "nursing education", "limit": 10, "resource_type": "journal"}}
+
+User: "I want peer reviewed articles from medical journals"
+{{"query": "medical", "limit": 10, "resource_type": "article"}}
+
+User: "I want research about academically at risk nursing students which are peer reviewed journals for last 3 years"
+{{"query": "academically at risk nursing students", "limit": 10, "resource_type": "journal", "date_from": 2022, "date_to": 2025}}
+
+User: "Find articles on diabetes from the last 5 years"
+{{"query": "diabetes", "limit": 10, "resource_type": "article", "date_from": 2020, "date_to": 2025}}
 
 Respond with ONLY valid JSON, nothing else."""
     
