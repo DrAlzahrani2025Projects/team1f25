@@ -147,10 +147,22 @@ Resource types:
 - "thesis" - for dissertations and theses
 - null - if not specified
 
-CRITICAL DISTINCTION:
-- "peer reviewed journals" OR "journals" = "journal" (the journal publication/title itself)
-- "peer reviewed articles" OR "journal articles" = "article" (articles published WITHIN journals)
-- If user says just "journals", assume they want the journal publication itself, NOT articles
+CRITICAL DISTINCTION - PAY CLOSE ATTENTION:
+- If user says "journals" OR "peer reviewed journals" OR "research journals" = resource_type: "journal"
+- If user says "articles" OR "peer reviewed articles" OR "journal articles" = resource_type: "article"
+- If user says "thesis" OR "theses" OR "dissertation" OR "dissertations" = resource_type: "thesis"
+- If user says "books" OR "ebooks" = resource_type: "book"
+
+RULES FOR DETERMINING RESOURCE TYPE:
+1. Look for the EXACT NOUN the user used: "articles", "journals", "books", "thesis", "dissertation"
+2. "peer reviewed" is an ADJECTIVE - it modifies the noun but doesn't change the resource type
+3. Examples of proper extraction:
+   - "peer reviewed JOURNALS" → resource_type: "journal"
+   - "peer reviewed ARTICLES" → resource_type: "article"
+   - "peer reviewed THESIS" → resource_type: "thesis"
+   - "research JOURNALS" → resource_type: "journal"
+   - "scholarly ARTICLES" → resource_type: "article"
+   - "doctoral DISSERTATION" → resource_type: "thesis"
 
 DATE CALCULATION (assume current year is 2025):
 - "last 3 years" = 2022 to 2025 (current year minus 3)
@@ -158,19 +170,10 @@ DATE CALCULATION (assume current year is 2025):
 - "since 2019" = 2019 to 2025
 - Always return dates as INTEGERS, never strings
 
-Examples:
+Examples - ARTICLES vs JOURNALS:
 
 User: "I need 5 articles about machine learning in healthcare"
 {{"query": "machine learning healthcare", "limit": 5, "resource_type": "article"}}
-
-User: "Find 10 books on climate change"
-{{"query": "climate change", "limit": 10, "resource_type": "book"}}
-
-User: "Show me research on diabetes"
-{{"query": "diabetes", "limit": 10, "resource_type": null}}
-
-User: "I want 3 journal articles about AI"
-{{"query": "artificial intelligence", "limit": 3, "resource_type": "article"}}
 
 User: "I need 5 journals about machine learning in healthcare"
 {{"query": "machine learning healthcare", "limit": 5, "resource_type": "journal"}}
@@ -178,14 +181,55 @@ User: "I need 5 journals about machine learning in healthcare"
 User: "Get me 7 scholarly articles on robotics"
 {{"query": "robotics", "limit": 7, "resource_type": "article"}}
 
+User: "I want 3 journal articles about AI"
+Note: "journal articles" means ARTICLES (published in journals)
+{{"query": "artificial intelligence", "limit": 3, "resource_type": "article"}}
+
 User: "Find peer reviewed journals on nursing education"
+Note: "peer reviewed journals" means JOURNALS (the publication itself)
 {{"query": "nursing education", "limit": 10, "resource_type": "journal"}}
 
 User: "I want peer reviewed articles from medical journals"
+Note: "peer reviewed articles" means ARTICLES (even though from journals)
 {{"query": "medical", "limit": 10, "resource_type": "article"}}
 
-User: "I want research about academically at risk nursing students which are peer reviewed journals for last 3 years"
+User: "I want research journals about academically at risk nursing students which are peer reviewed for last 3 years"
+Note: "research journals" means JOURNALS, "peer reviewed" is just an adjective
 {{"query": "academically at risk nursing students", "limit": 10, "resource_type": "journal", "date_from": 2022, "date_to": 2025}}
+
+User: "Find peer reviewed articles about nursing students from last 5 years"
+Note: "peer reviewed articles" means ARTICLES
+{{"query": "nursing students", "limit": 10, "resource_type": "article", "date_from": 2020, "date_to": 2025}}
+
+Examples - THESIS/DISSERTATIONS:
+
+User: "I want thesis about academically at risk nursing students which are peer reviewed for last 3 years"
+Note: "thesis" is the resource type, "peer reviewed" is just an adjective
+{{"query": "academically at risk nursing students", "limit": 10, "resource_type": "thesis", "date_from": 2022, "date_to": 2025}}
+
+User: "Find 5 dissertations on machine learning"
+{{"query": "machine learning", "limit": 5, "resource_type": "thesis"}}
+
+User: "I need doctoral dissertations about climate change"
+Note: "doctoral dissertations" means THESIS
+{{"query": "climate change", "limit": 10, "resource_type": "thesis"}}
+
+User: "Show me theses on nursing education"
+Note: "theses" (plural of thesis) means THESIS
+{{"query": "nursing education", "limit": 10, "resource_type": "thesis"}}
+
+Examples - BOOKS:
+
+User: "Find 10 books on climate change"
+{{"query": "climate change", "limit": 10, "resource_type": "book"}}
+
+User: "I need ebooks about artificial intelligence"
+{{"query": "artificial intelligence", "limit": 10, "resource_type": "book"}}
+
+Other examples:
+
+User: "Show me research on diabetes"
+{{"query": "diabetes", "limit": 10, "resource_type": null}}
 
 User: "Find articles on diabetes from the last 5 years"
 {{"query": "diabetes", "limit": 10, "resource_type": "article", "date_from": 2020, "date_to": 2025}}
