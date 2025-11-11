@@ -137,8 +137,8 @@ Extract:
 1. "query": The main search terms (simple, no Boolean operators)
 2. "limit": Number of results requested (default: 10 if not specified)
 3. "resource_type": Type of resource to search for
-4. "date_from": (optional) Lower bound for publication date. Use INTEGER in YYYY format (e.g., 2022 not "2022") or null.
-5. "date_to": (optional) Upper bound for publication date. Use INTEGER in YYYY format (e.g., 2025 not "2025") or null.
+4. "date_from": (optional) Lower bound for publication date. Use STRING in YYYYMMDD format (e.g., "20220101" for Jan 1, 2022) or null.
+5. "date_to": (optional) Upper bound for publication date. Use STRING in YYYYMMDD format (e.g., "20251231" for Dec 31, 2025) or null.
 
 Resource types:
 - "article" - for scholarly/journal articles (when user says "articles" or "journal articles" or "peer reviewed articles")
@@ -164,11 +164,16 @@ RULES FOR DETERMINING RESOURCE TYPE:
    - "scholarly ARTICLES" → resource_type: "article"
    - "doctoral DISSERTATION" → resource_type: "thesis"
 
-DATE CALCULATION (assume current year is 2025):
-- "last 3 years" = 2022 to 2025 (current year minus 3)
-- "last 5 years" = 2020 to 2025
-- "since 2019" = 2019 to 2025
-- Always return dates as INTEGERS, never strings
+DATE CALCULATION (assume today is November 10, 2025 = "20251110"):
+- "last 3 years" = "20221110" to "20251110" (exactly 3 years ago from today)
+- "last 5 years" = "20201110" to "20251110" (exactly 5 years ago from today)
+- "since 2019" = "20190101" to "20251110" (Jan 1 of specified year to today)
+- "from 2018 to 2020" = "20180101" to "20201231" (full year ranges)
+- Always return dates as STRINGS in YYYYMMDD format
+- For "last N years/months", calculate from TODAY's date, not just the year
+- For "since YYYY", use January 1st of that year
+- For explicit year ranges, use January 1st to December 31st
+- For end dates when not specified, use TODAY's date
 
 Examples - ARTICLES vs JOURNALS:
 
@@ -194,18 +199,18 @@ Note: "peer reviewed articles" means ARTICLES (even though from journals)
 {{"query": "medical", "limit": 10, "resource_type": "article"}}
 
 User: "I want research journals about academically at risk nursing students which are peer reviewed for last 3 years"
-Note: "research journals" means JOURNALS, "peer reviewed" is just an adjective
-{{"query": "academically at risk nursing students", "limit": 10, "resource_type": "journal", "date_from": 2022, "date_to": 2025}}
+Note: "research journals" means JOURNALS, "peer reviewed" is just an adjective. "last 3 years" from today (20251110) = 3 years ago
+{{"query": "academically at risk nursing students", "limit": 10, "resource_type": "journal", "date_from": "20221110", "date_to": "20251110"}}
 
 User: "Find peer reviewed articles about nursing students from last 5 years"
-Note: "peer reviewed articles" means ARTICLES
-{{"query": "nursing students", "limit": 10, "resource_type": "article", "date_from": 2020, "date_to": 2025}}
+Note: "peer reviewed articles" means ARTICLES. "last 5 years" from today (20251110) = 5 years ago
+{{"query": "nursing students", "limit": 10, "resource_type": "article", "date_from": "20201110", "date_to": "20251110"}}
 
 Examples - THESIS/DISSERTATIONS:
 
 User: "I want thesis about academically at risk nursing students which are peer reviewed for last 3 years"
-Note: "thesis" is the resource type, "peer reviewed" is just an adjective
-{{"query": "academically at risk nursing students", "limit": 10, "resource_type": "thesis", "date_from": 2022, "date_to": 2025}}
+Note: "thesis" is the resource type, "peer reviewed" is just an adjective. "last 3 years" from today (20251110) = 3 years ago
+{{"query": "academically at risk nursing students", "limit": 10, "resource_type": "thesis", "date_from": "20221110", "date_to": "20251110"}}
 
 User: "Find 5 dissertations on machine learning"
 {{"query": "machine learning", "limit": 5, "resource_type": "thesis"}}
@@ -232,7 +237,8 @@ User: "Show me research on diabetes"
 {{"query": "diabetes", "limit": 10, "resource_type": null}}
 
 User: "Find articles on diabetes from the last 5 years"
-{{"query": "diabetes", "limit": 10, "resource_type": "article", "date_from": 2020, "date_to": 2025}}
+Note: "last 5 years" from today (20251110) = 5 years ago
+{{"query": "diabetes", "limit": 10, "resource_type": "article", "date_from": "20201110", "date_to": "20251110"}}
 
 Respond with ONLY valid JSON, nothing else."""
     
@@ -240,15 +246,14 @@ Respond with ONLY valid JSON, nothing else."""
     # are not exhaustive but help the model learn preferred shapes for dates.
     DATE_EXTRACTION_EXAMPLES = """
 Examples of date formats you may return for date_from/date_to:
-- Year only: 2018
-- Year range: 2015 to 2018
-- Full date: 2020-03-15 or March 15, 2020
-- Month and year: March 2020
-- Relative: since 2019, last 3 years, last month, last 6 months
-- Quarter: Q1 2018 (interpret as Jan-Mar 2018)
-
-When returning dates, prefer integers in YYYY or YYYYMMDD format. Use null
-when a bound is not specified.
+- "last 5 years" (from today 20251110) → "20201110" to "20251110"
+- "last 3 years" (from today 20251110) → "20221110" to "20251110"
+- "since 2019" → "20190101" to "20251110" (today's date)
+- "from 2015 to 2018" → "20150101" to "20181231"
+- "in 2020" → "20200101" to "20201231"
+- Always use YYYYMMDD format as strings
+- Calculate "last N years" from TODAY's exact date, not just year
+- Use null when a bound is not specified
 """
     
 
