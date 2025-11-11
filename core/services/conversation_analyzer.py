@@ -18,8 +18,13 @@ class ConversationAnalyzer:
     # Keywords that indicate user wants to search immediately
     SEARCH_TRIGGER_KEYWORDS = [
         "search now", "find articles", "show me", "search for", 
-        "look for", "get articles", "retrieve", "fetch"
+        "look for", "get articles", "retrieve", "fetch", "give me",
+        "find me", "get me"
     ]
+    
+    # Additional trigger patterns that indicate search intent
+    SEARCH_VERBS = ["i need", "i want", "get me", "give me", "find me"]
+    RESOURCE_TYPES = ["article", "book", "journal", "thesis"]
     
     def __init__(self, llm_client: ILLMClient, prompt_provider: IPromptProvider):
         """Initialize with dependencies (Dependency Injection)."""
@@ -29,7 +34,21 @@ class ConversationAnalyzer:
     def should_trigger_search(self, user_input: str) -> bool:
         """Check if user explicitly wants to trigger a search."""
         user_input_lower = user_input.lower()
-        return any(keyword in user_input_lower for keyword in self.SEARCH_TRIGGER_KEYWORDS)
+        
+        # Check simple trigger keywords
+        if any(keyword in user_input_lower for keyword in self.SEARCH_TRIGGER_KEYWORDS):
+            return True
+        
+        # Check for verb + resource type pattern (e.g., "I need books", "I want articles")
+        for verb in self.SEARCH_VERBS:
+            if verb in user_input_lower:
+                # Check if any resource type appears after the verb
+                verb_pos = user_input_lower.find(verb)
+                text_after_verb = user_input_lower[verb_pos:]
+                if any(resource in text_after_verb for resource in self.RESOURCE_TYPES):
+                    return True
+        
+        return False
     
     def get_follow_up_response(self, conversation_history: List[Dict]) -> str:
         """Generate a follow-up question or indicate search readiness."""
