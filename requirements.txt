@@ -1,5 +1,28 @@
-streamlit
-pydantic
-requests
-urllib3
-groq
+# Updated dependencies with security patches applied
+# Based on SBOM Vulnerability Report analysis
+
+# Web framework - fixes multiple GHSA vulnerabilities
+# Minimum version 1.37.0 addresses: GHSA-rxff-vr5r-8cj5, GHSA-v4hr-4jpx-56gc, 
+# GHSA-9c6g-qp-rvxw, GHSA-8qw9-gf7w-42x5
+streamlit>=1.37.0
+
+# Data validation - fixes multiple GHSA vulnerabilities
+# Minimum version 2.4.0 addresses: GHSA-mr82-8j83-vxmv, GHSA-5jqp-qgf6-3pvh
+pydantic>=2.4.0
+
+# HTTP library - fixes multiple GHSA vulnerabilities including CRITICAL
+# Minimum version 2.32.4 addresses: GHSA-j8r2-6x86-q33q, GHSA-pg2w-x9wp-vw92,
+# GHSA-cfj3-7x9c-4p3h, GHSA-652x-xj99-gmcc, GHSA-x84v-xcm2-53pg,
+# GHSA-9hjg-9r4m-mvj7, GHSA-9wx4-h78v-vm56
+requests>=2.32.4
+
+# URL parsing library - fixes CRITICAL and HIGH vulnerabilities
+# Minimum version 2.5.0 addresses: GHSA-www2-v7xj-xrc6 (CRITICAL),
+# GHSA-mh33-7rrq-662w, GHSA-q2q7-5pp4-w6pg, GHSA-hmv2-79q8-fv6g,
+# GHSA-r64q-w8jr-g9qp, GHSA-gwvm-45gx-3cf8, GHSA-wqvq-5m8c-6g24,
+# GHSA-v4w5-p2hg-8fh6, GHSA-34jh-p97f-mpxf, GHSA-5phf-pp7p-vc2r,
+# GHSA-g4mx-q9vg-27p4, GHSA-pq67-6m6q-mj2v, GHSA-48p4-8xcf-vxj5
+urllib3>=2.5.0
+
+# AI client library
+groq>=0.4.0
