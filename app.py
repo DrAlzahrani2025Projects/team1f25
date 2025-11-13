@@ -150,7 +150,6 @@ class ScholarAIApp:
               }
               .csusb-hero-text p {
                 margin: 6px 0 0 0;
-                color: #000000;                /* CSUSB black */
               }
               @media (min-width: 740px) {
                 .csusb-hero-text { text-align: left; }
