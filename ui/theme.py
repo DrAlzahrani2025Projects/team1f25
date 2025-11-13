@@ -26,6 +26,8 @@ def get_user_avatar() -> str | None:
 
 def inject_brand_css():
 
+# Build a stylesheet using the color constants. Comments inside the
+# CSS explain what each block styles; 
     css = f"""
     <style>
       :root {{
