@@ -2,6 +2,8 @@
 import streamlit as st
 import os
 
+# Central color palette used across the app. Keys are descriptive so
+# callers can reference colors by name when generating CSS.
 CSUSB_COLORS = {
     "blue": "#0065BD",
     "black": "#000000",
