@@ -41,13 +41,7 @@ graph LR
 | **🤖 Groq LLM** | Provides natural language understanding and generation |
 | **📖 CSUSB Library** | Academic resource database (articles, books, journals) |
 
-### 🔄 Simple Workflow
 
-1. User asks a question in natural language
-2. AI Engine analyzes intent using Groq LLM
-3. AI Engine searches CSUSB Library database
-4. Results displayed in organized table format
-5. AI provides follow-up suggestions or clarifying questions
 
 
 
