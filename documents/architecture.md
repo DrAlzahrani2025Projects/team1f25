@@ -163,9 +163,5 @@ graph TB
 #### 1. 🖥️ User Interface Layer (Streamlit)
 - **`app.py`**: Main application entry point and orchestrator
 - **`ChatOrchestrator`**: Handles user interactions and delegates to business services
-- **UI Components**: Renders sidebar, chat messages, and result tables
-- **Session State**: Manages conversation history, search results, and user preferences
-
-#### 2. 🧠 Core Business Logic
 
 
