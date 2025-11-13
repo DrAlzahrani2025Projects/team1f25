@@ -68,7 +68,7 @@ def display_results_table(results: Dict[str, Any]):
     # Display as dataframe with proper configuration
     st.dataframe(
         table_data,
-        width='stretch',
+        use_container_width=True,
         hide_index=True,
         column_config={
             "#": st.column_config.NumberColumn("#", width="small"),
