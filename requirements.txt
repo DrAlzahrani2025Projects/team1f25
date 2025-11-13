@@ -20,8 +20,7 @@ requests>=2.32.4
 # Minimum version 2.5.0 addresses: GHSA-www2-v7xj-xrc6 (CRITICAL),
 # GHSA-mh33-7rrq-662w, GHSA-q2q7-5pp4-w6pg, GHSA-hmv2-79q8-fv6g,
 # GHSA-r64q-w8jr-g9qp, GHSA-gwvm-45gx-3cf8, GHSA-wqvq-5m8c-6g24,
-# GHSA-v4w5-p2hg-8fh6, GHSA-34jh-p97f-mpxf, GHSA-5phf-pp7p-vc2r,
-# GHSA-g4mx-q9vg-27p4, GHSA-pq67-6m6q-mj2v, GHSA-48p4-8xcf-vxj5
+
 urllib3>=2.5.0
 
 # AI client library
