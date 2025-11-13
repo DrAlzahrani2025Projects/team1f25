@@ -95,4 +95,5 @@ def inject_brand_css():
     </style>
     """
     # Inject the stylesheet into the page. `unsafe_allow_html=True` is
+    # required for raw style tags to be accepted by Streamlit.
     st.markdown(css, unsafe_allow_html=True)
