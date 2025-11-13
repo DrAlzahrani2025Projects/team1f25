@@ -1,15 +1,18 @@
-# ui/theme.py
+# ui/theme.py UI theme helpers used by the Streamlit app.
 import streamlit as st
 import os
 
+# Central color palette used across the app. Keys are descriptive so
+# callers can reference colors by name when generating CSS.
 CSUSB_COLORS = {
     "blue": "#0065BD",
     "black": "#000000",
     "gray": "#AAB0B5",
     "white": "#FFFFFF",
-    "blue_dark": "#00509a",  # hover/pressed
+    "blue_dark": "#00509a",  # darker blue used for hover/pressed states
 }
 
+# Function to get assistant avatar image path.
 def get_assistant_avatar() -> str | None:
     """Path to the assistant avatar image (fallback to emoji if missing)."""
     path = "ui/assests/chatbot-icon.png"   # keep your folder name
@@ -22,6 +25,8 @@ def get_user_avatar() -> str | None:
 
 def inject_brand_css():
 
+# Build a stylesheet using the color constants. Comments inside the
+# CSS explain what each block styles; 
     css = f"""
     <style>
       :root {{
@@ -35,9 +40,6 @@ def inject_brand_css():
       /* Header title & subtitle */
       h1, .stMarkdown h1 {{
         color: var(--csusb-blue);
-      }}
-      .stMarkdown p, .stMarkdown li, .stMarkdown {{
-        color: var(--csusb-black);
       }}
 
       /* Buttons */
@@ -91,4 +93,6 @@ def inject_brand_css():
       }}
     </style>
     """
+    # Inject the stylesheet into the page. `unsafe_allow_html=True` is
+    # required for raw style tags to be accepted by Streamlit.
     st.markdown(css, unsafe_allow_html=True)
