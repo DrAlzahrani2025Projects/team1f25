@@ -1,5 +1,5 @@
-streamlit
-pydantic
-requests
-urllib3
-groq
+streamlit>=1.37.0
+pydantic>=2.4.0
+requests>=2.32.4
+urllib3>=2.5.0
+groq>=0.4.0
