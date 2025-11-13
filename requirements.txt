@@ -5,9 +5,6 @@
 # Minimum version 1.37.0 addresses: GHSA-rxff-vr5r-8cj5, GHSA-v4hr-4jpx-56gc, 
 # GHSA-9c6g-qp-rvxw, GHSA-8qw9-gf7w-42x5
 streamlit>=1.37.0
-
-# Data validation - fixes multiple GHSA vulnerabilities
-# Minimum version 2.4.0 addresses: GHSA-mr82-8j83-vxmv, GHSA-5jqp-qgf6-3pvh
 pydantic>=2.4.0
 requests>=2.32.4
 urllib3>=2.5.0
