@@ -49,9 +49,7 @@ graph LR
 4. Results displayed in organized table format
 5. AI provides follow-up suggestions or clarifying questions
 
----
 
-## Detailed System Architecture Diagram
 
 
 
