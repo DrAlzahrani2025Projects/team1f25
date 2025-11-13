@@ -78,6 +78,7 @@ class ChatOrchestrator:
                 f"When would you like the {resource_label} from? "
                 "You can answer with examples like: 'last 5 years', '2015-2018', 'since 2019', or 'any time'."
             )
+            logger.info(f"Requesting date clarification: {clarifying}")
             st.markdown(clarifying)
             st.session_state.messages.append({"role": "assistant", "content": clarifying})
             # store pending conversation and params so we can continue after clarification
@@ -93,9 +94,41 @@ class ChatOrchestrator:
         # Show search message
         self._display_search_message(search_query, limit, resource_type)
 
-        # Perform search
-        with st.spinner("Searching library database..."):
-            results = perform_library_search(search_query, limit=limit, resource_type=resource_type, date_from=date_from, date_to=date_to)
+        # Perform search with progress bar
+        import time
+        import threading
+        
+        progress_text = "Searching library database..."
+        progress_bar = st.progress(0, text=progress_text)
+        
+        # Thread-safe storage for search results
+        search_data = {"done": False, "results": None}
+        
+        def perform_search():
+            search_data["results"] = perform_library_search(
+                search_query, limit=limit, resource_type=resource_type, 
+                date_from=date_from, date_to=date_to
+            )
+            search_data["done"] = True
+        
+        # Start search in background thread
+        search_thread = threading.Thread(target=perform_search)
+        search_thread.start()
+        
+        # Animate progress bar while search is running
+        progress = 0
+        while not search_data["done"]:
+            progress = min(progress + 10, 90)  # Cap at 90% until complete
+            progress_bar.progress(progress, text=progress_text)
+            time.sleep(0.2)
+        
+        # Complete the progress bar
+        progress_bar.progress(100, text="Search complete!")
+        search_thread.join()
+        time.sleep(0.3)  # Brief pause to show completion
+        progress_bar.empty()  # Remove progress bar
+        
+        results = search_data["results"]
 
         # Handle results
         self._handle_search_results(results, search_query, resource_type)
@@ -118,6 +151,7 @@ class ChatOrchestrator:
         parts.append(f"on: **{query}**")
         
         message = " ".join(parts) + "\n\nSearching the library database..."
+        logger.info(f"AI search message: {message}")
         st.markdown(message)
         st.session_state.messages.append({"role": "assistant", "content": message})
     
@@ -125,23 +159,29 @@ class ChatOrchestrator:
         """Handle search results - success, no results, or error."""
         if results is None:
             # API error
+            logger.error(f"Search API error for query: {query}")
             self._handle_search_error()
         elif len(results.get("docs", [])) == 0:
             # No results found
+            logger.info(f"No results found for query: {query}, resource_type: {resource_type}")
             self._handle_no_results(query, resource_type)
         else:
             # Success
+            doc_count = len(results.get("docs", []))
+            logger.info(f"Search successful: Found {doc_count} results for query: {query}")
             st.session_state.search_results = results
             st.rerun()
     
     def _handle_search_error(self):
         """Handle search API errors."""
         error_msg = "I encountered an issue searching the library. Please try again or refine your search."
+        logger.error(f"Search error response sent to user: {error_msg}")
         st.error(error_msg)
         st.session_state.messages.append({"role": "assistant", "content": error_msg})
     
     def _handle_no_results(self, query: str, resource_type: Optional[str]):
         """Handle when no results are found."""
+        logger.info(f"Generating search suggestions for: {query}")
         suggestions = self.suggestion_service.generate_suggestions(query)
         
         message = f"I searched the library but couldn't find any results for **'{query}'**"
@@ -150,6 +190,7 @@ class ChatOrchestrator:
         message += ".\n\n**Try these alternative searches:**\n"
         message += suggestions
         
+        logger.info(f"AI no-results message with suggestions: {message[:100]}...")
         st.warning("No results found")
         st.markdown(message)
         st.session_state.messages.append({"role": "assistant", "content": message})
@@ -160,11 +201,15 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
     Handle user message and generate appropriate response.
     Simplified to delegate to ChatOrchestrator.
     """
+    # Log user message
+    logger.info(f"User message: {prompt}")
+    
     # Create orchestrator
     orchestrator = ChatOrchestrator(groq_client)
 
     # If we're awaiting a date range clarification, treat this message as the date answer
     if st.session_state.get("conversation_stage") == "awaiting_date_range":
+        logger.info("Processing date range clarification response")
         # Add user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar=get_user_avatar()):
@@ -195,8 +240,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
 
         # Resume the search using the stored pending conversation context
         with st.chat_message("assistant", avatar=get_assistant_avatar()):
-            with st.spinner("Searching with your date range..."):
-                orchestrator.execute_search(pending_conv or st.session_state.messages.copy())
+            orchestrator.execute_search(pending_conv or st.session_state.messages.copy())
         return
 
     # Add user message
@@ -206,25 +250,56 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
 
     # Process message
     with st.chat_message("assistant", avatar=get_assistant_avatar()):
-        with st.spinner("Thinking..."):
-            conversation_history = st.session_state.messages.copy()
+        import time
+        import threading
+        
+        conversation_history = st.session_state.messages.copy()
 
-            # Check if should search
-            if orchestrator.analyzer.should_trigger_search(prompt):
-                orchestrator.execute_search(conversation_history)
-                return
+        # Check if trigger keywords present (indicates intent to search)
+        has_trigger = orchestrator.analyzer.should_trigger_search(prompt)
+        if has_trigger:
+            logger.info("Trigger keyword detected - checking if query is complete")
+        
+        # Show progress bar while getting AI response
+        progress_text = "Thinking..."
+        progress_bar = st.progress(0, text=progress_text)
+        
+        # Thread-safe storage for AI response
+        response_data = {"done": False, "response": None}
+        
+        def get_ai_response():
+            response_data["response"] = orchestrator.get_conversation_response(conversation_history)
+            response_data["done"] = True
+        
+        # Start AI processing in background thread
+        response_thread = threading.Thread(target=get_ai_response)
+        response_thread.start()
+        
+        # Animate progress bar while AI is thinking
+        progress = 0
+        while not response_data["done"]:
+            progress = min(progress + 15, 85)  # Cap at 85% until complete
+            progress_bar.progress(progress, text=progress_text)
+            time.sleep(0.15)
+        
+        # Complete the progress bar
+        progress_bar.progress(100, text="Done!")
+        response_thread.join()
+        time.sleep(0.2)  # Brief pause to show completion
+        progress_bar.empty()  # Remove progress bar
+        
+        ai_response = response_data["response"]
+        logger.info(f"AI response: {ai_response}")
 
-            # Get AI response
-            ai_response = orchestrator.get_conversation_response(conversation_history)
-            logger.info(f"AI response: {ai_response}")
-
-            # Check if ready to search
-            if "READY_TO_SEARCH" in ai_response:
-                orchestrator.execute_search(conversation_history)
-            else:
-                # Continue conversation
-                st.markdown(ai_response)
-                st.session_state.messages.append({"role": "assistant", "content": ai_response})
+        # Check if ready to search
+        if "READY_TO_SEARCH" in ai_response:
+            logger.info("AI indicated READY_TO_SEARCH - executing search")
+            orchestrator.execute_search(conversation_history)
+        else:
+            # Continue conversation (ask for clarification)
+            logger.info(f"AI continuing conversation with follow-up question")
+            st.markdown(ai_response)
+            st.session_state.messages.append({"role": "assistant", "content": ai_response})
 
 
 # Legacy function kept for backward compatibility

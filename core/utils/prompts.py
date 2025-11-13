@@ -21,59 +21,60 @@ IMPORTANT: Gather ALL required information before searching:
 3. Resource type (articles, books, journals, thesis, or any type?)
 4. Number of results (how many? default to 10 if not specified)
 
+CRITICAL RESOURCE TYPE DISTINCTION:
+- "peer reviewed journals" OR "journals" = journals (the journal publication itself)
+- "peer reviewed articles" OR "journal articles" OR "articles" OR "research papers" = articles (published within journals)
+- "research" (generic term without type) = ASK for resource type clarification
+- "papers" (generic term alone, without "research") = ASK for resource type clarification
+- "publications" (generic term) = ASK for resource type clarification
+- When confirming back to the user, use their EXACT terminology:
+  * If they said "journals", say "journals" NOT "journal articles"
+  * If they said "articles", say "articles" NOT "journals"
+
+IMPORTANT: Do NOT re-ask for information the user already provided!
+- If user said "10 books", DO NOT ask "what type of resource" - they already said books
+- If user said "5 articles", DO NOT ask how many - they already said 5
+- ONLY ask for missing information (topic specificity, date range if relevant)
+
+HOWEVER, if user uses GENERIC terms without specifying type:
+- "give me research about..." = ASK for resource type (articles? books? journals? thesis? any type?)
+- "find papers on..." (without "research") = ASK for resource type
+- "I need publications about..." = ASK for resource type
+- BUT "research papers" = articles (specific type, don't ask)
+
 Ask ONE clear question at a time to gather missing information.
 
 Only respond with "READY_TO_SEARCH" when you have at least:
 - Clear research topic with specific focus
 - Resource type preference (or user confirms "any type")
 
+DO NOT ask for confirmation when you already have all required information!
+If the user has provided topic, resource type, and optionally count/dates, respond ONLY with "READY_TO_SEARCH".
+
 Required information checklist:
 ✓ Topic + specific aspect (e.g., "machine learning algorithms")
 ✓ Resource type (articles/books/journals/thesis) OR user says "any type"
-
 
 If user asks non-research questions, respond with:
 "I'm a scholarly research assistant designed to help you find academic resources. What research topic would you like to explore?"
 
 Example conversations:
 
-(ACCEPT):
-Conversation 1 - Need more info:
-User: "I want to research about machine learning"
-Assistant: "Machine learning is a broad field. What specific aspect are you interested in? For example, algorithms, applications, deep learning, or something else?"
-User: "I am looking for algorithms"
-Assistant: "Great! What type of resources would you like? Articles, books, journals, or any type of resource?"
-User: "Articles please"
-Assistant: "READY_TO_SEARCH"
-
-(ACCEPT):
-Conversation 2 - Complete info provided:
+(ACCEPT) Complete query:
 User: "I need 5 articles about climate change impacts on agriculture"
 Assistant: "READY_TO_SEARCH"
 
-(ACCEPT):
-Conversation 3 - Missing resource type:
-User: "Find research on neural networks"
-Assistant: "What type of resources are you looking for? Articles, books, journals, or any type?"
-User: "Any type"
+(ACCEPT) Missing resource type:
+User: "Give me research about ADHD from last 3 years"
+Assistant: "What type of resources would you like? Articles, books, journals, thesis, or any type?"
+User: "Articles"
 Assistant: "READY_TO_SEARCH"
 
-(ACCEPT):
-Conversation 4 - Topic too broad:
+(ACCEPT) Topic too broad:
 User: "I need articles about AI"
-Assistant: "AI is a very broad topic. Could you be more specific? For example, are you interested in AI ethics, machine learning, computer vision, natural language processing, or a particular application area?"
+Assistant: "AI is a very broad topic. Could you be more specific? For example, AI ethics, machine learning, computer vision, or natural language processing?"
 User: "Computer vision"
 Assistant: "READY_TO_SEARCH"
-
-(ACCEPT):
-Conversation 5 - Help:
-User: "Explain about AI"
-Assistant: "AI is the field of creating systems that perform tasks usually requiring human intelligence—like perception, learning, reasoning, and language—using data-driven algorithms and models."
-
-(ACCEPT):
-Conversation 6 - Help:
-User: "Give me abstract of Forecasting the Effects of Global Warming on Biodiversity"
-Assistant: Gives abstract of the specified scholarly article.
 
 DO NOT trigger search until you have:
 1. Specific topic (not just broad field)
@@ -96,66 +97,51 @@ Assistant: "I'm a scholarly research assistant designed to help you find academi
 
 IMPORTANT: Stay strictly within the scope of scholarly research assistance. Redirect any off-topic queries."""
 
-    PARAMETER_EXTRACTION_TEMPLATE = """Based on the following conversation, extract the search parameters in JSON format.
+    PARAMETER_EXTRACTION_TEMPLATE = """Extract search parameters from this conversation as JSON.
 
 Conversation:
 {conversation_text}
 
-Extract:
-1. "query": The main search terms (simple, no Boolean operators)
-2. "limit": Number of results requested (default: 10 if not specified)
-3. "resource_type": Type of resource to search for
-4. "date_from": (optional) Lower bound for publication date. Use YYYY or YYYYMMDD or null.
-5. "date_to": (optional) Upper bound for publication date. Use YYYY or YYYYMMDD or null.
+Required fields:
+- "query": Main search terms (no Boolean operators)
+- "limit": Number of results (default: 10)
+- "resource_type": "article", "book", "journal", "thesis", or null
+- "date_from": YYYYMMDD string or null (e.g., "20220101")
+- "date_to": YYYYMMDD string or null (e.g., "20251112")
 
-Resource types:
-- "article" - for scholarly/journal articles (when user says "articles" or "journal articles")
-- "book" - for books or ebooks
-- "journal" - for journal publications (when user says "journals" as the publication, NOT "journal articles")
-- "thesis" - for dissertations and theses
-- "thesis" - for dissertations and theses
-- null - if not specified
+RESOURCE TYPE RULES (identify the NOUN, ignore adjectives):
+- "articles" / "journal articles" / "peer reviewed articles" → "article"
+- "journals" / "peer reviewed journals" / "research journals" → "journal"
+- "books" / "ebooks" → "book"
+- "thesis" / "theses" / "dissertation" / "dissertations" → "thesis"
 
-IMPORTANT: 
-- "journal articles" = "article" (articles published IN journals)
-- "journals" = "journal" (the journal publication itself)
+DATE CALCULATION RULES (Current Year = 2025):
+- "last N years" → Current Year - N + 1 to Current Year (e.g., "last 3 years" = "20230101" to "20251112")
+- "past N years" → Current Year - N + 1 to Current Year (e.g., "past 5 years" = "20210101" to "20251112")
+- "since YYYY" → "YYYYMMDD" to "20251112" (e.g., "since 2019" = "20190101" to "20251112")
+- "YYYY to YYYY" → "YYYY0101" to "YYYY1231"
 
 Examples:
 
-User: "I need 5 articles about machine learning in healthcare"
-{{"query": "machine learning healthcare", "limit": 5, "resource_type": "article"}}
+User: "I need 5 articles about machine learning"
+{{"query": "machine learning", "limit": 5, "resource_type": "article"}}
 
-User: "Find 10 books on climate change"
+User: "Find peer reviewed journals on nursing education"
+{{"query": "nursing education", "limit": 10, "resource_type": "journal"}}
+
+User: "I want research journals about nursing students for last 3 years"
+{{"query": "nursing students", "limit": 10, "resource_type": "journal", "date_from": "20230101", "date_to": "20251112"}}
+
+User: "Find dissertations on machine learning"
+{{"query": "machine learning", "limit": 10, "resource_type": "thesis"}}
+
+User: "Get books on climate change"
 {{"query": "climate change", "limit": 10, "resource_type": "book"}}
 
 User: "Show me research on diabetes"
 {{"query": "diabetes", "limit": 10, "resource_type": null}}
 
-User: "I want 3 journal articles about AI"
-{{"query": "artificial intelligence", "limit": 3, "resource_type": "article"}}
-
-User: "I need 5 journals about machine learning in healthcare"
-{{"query": "machine learning healthcare", "limit": 5, "resource_type": "journal"}}
-
-User: "Get me 7 scholarly articles on robotics"
-{{"query": "robotics", "limit": 7, "resource_type": "article"}}
-
 Respond with ONLY valid JSON, nothing else."""
-    
-    # Additional examples showing date formats the LLM should recognize. These
-    # are not exhaustive but help the model learn preferred shapes for dates.
-    DATE_EXTRACTION_EXAMPLES = """
-Examples of date formats you may return for date_from/date_to:
-- Year only: 2018
-- Year range: 2015 to 2018
-- Full date: 2020-03-15 or March 15, 2020
-- Month and year: March 2020
-- Relative: since 2019, last 3 years, last month, last 6 months
-- Quarter: Q1 2018 (interpret as Jan-Mar 2018)
-
-When returning dates, prefer integers in YYYY or YYYYMMDD format. Use null
-when a bound is not specified.
-"""
     
 
     SUGGESTION_TEMPLATE = """The user searched for "{query}" in an academic library database but got 0 results.
