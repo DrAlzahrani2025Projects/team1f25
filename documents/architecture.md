@@ -167,10 +167,5 @@ graph TB
 - **Session State**: Manages conversation history, search results, and user preferences
 
 #### 2. 🧠 Core Business Logic
-**Services** (following Single Responsibility Principle):
-- **`ConversationAnalyzer`**: Extracts user intents, search parameters, and date filters from conversations
-- **`SearchService`**: Coordinates library searches with filtering and pagination
-- **`SuggestionService`**: Generates alternative search suggestions when no results found
-- **`ResultFormatter`**: Parses and formats search results for display
 
 
