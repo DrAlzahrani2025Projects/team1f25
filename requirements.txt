@@ -9,9 +9,6 @@ streamlit>=1.37.0
 # Data validation - fixes multiple GHSA vulnerabilities
 # Minimum version 2.4.0 addresses: GHSA-mr82-8j83-vxmv, GHSA-5jqp-qgf6-3pvh
 pydantic>=2.4.0
-
-# HTTP library - fixes multiple GHSA vulnerabilities including CRITICAL
-# Minimum version 2.32.4 addresses: GHSA-j8r2-6x86-q33q, GHSA-pg2w-x9wp-vw92,
 requests>=2.32.4
 urllib3>=2.5.0
 groq>=0.4.0
