@@ -94,9 +94,41 @@ class ChatOrchestrator:
         # Show search message
         self._display_search_message(search_query, limit, resource_type)
 
-        # Perform search
-        with st.spinner("Searching library database..."):
-            results = perform_library_search(search_query, limit=limit, resource_type=resource_type, date_from=date_from, date_to=date_to)
+        # Perform search with progress bar
+        import time
+        import threading
+        
+        progress_text = "Searching library database..."
+        progress_bar = st.progress(0, text=progress_text)
+        
+        # Thread-safe storage for search results
+        search_data = {"done": False, "results": None}
+        
+        def perform_search():
+            search_data["results"] = perform_library_search(
+                search_query, limit=limit, resource_type=resource_type, 
+                date_from=date_from, date_to=date_to
+            )
+            search_data["done"] = True
+        
+        # Start search in background thread
+        search_thread = threading.Thread(target=perform_search)
+        search_thread.start()
+        
+        # Animate progress bar while search is running
+        progress = 0
+        while not search_data["done"]:
+            progress = min(progress + 10, 90)  # Cap at 90% until complete
+            progress_bar.progress(progress, text=progress_text)
+            time.sleep(0.2)
+        
+        # Complete the progress bar
+        progress_bar.progress(100, text="Search complete!")
+        search_thread.join()
+        time.sleep(0.3)  # Brief pause to show completion
+        progress_bar.empty()  # Remove progress bar
+        
+        results = search_data["results"]
 
         # Handle results
         self._handle_search_results(results, search_query, resource_type)
@@ -208,8 +240,7 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
 
         # Resume the search using the stored pending conversation context
         with st.chat_message("assistant", avatar=get_assistant_avatar()):
-            with st.spinner("Searching with your date range..."):
-                orchestrator.execute_search(pending_conv or st.session_state.messages.copy())
+            orchestrator.execute_search(pending_conv or st.session_state.messages.copy())
         return
 
     # Add user message
@@ -219,27 +250,56 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
 
     # Process message
     with st.chat_message("assistant", avatar=get_assistant_avatar()):
-        with st.spinner("Thinking..."):
-            conversation_history = st.session_state.messages.copy()
+        import time
+        import threading
+        
+        conversation_history = st.session_state.messages.copy()
 
-            # Check if trigger keywords present (indicates intent to search)
-            has_trigger = orchestrator.analyzer.should_trigger_search(prompt)
-            if has_trigger:
-                logger.info("Trigger keyword detected - checking if query is complete")
-            
-            # Always get AI response to check if query is complete
-            ai_response = orchestrator.get_conversation_response(conversation_history)
-            logger.info(f"AI response: {ai_response}")
+        # Check if trigger keywords present (indicates intent to search)
+        has_trigger = orchestrator.analyzer.should_trigger_search(prompt)
+        if has_trigger:
+            logger.info("Trigger keyword detected - checking if query is complete")
+        
+        # Show progress bar while getting AI response
+        progress_text = "Thinking..."
+        progress_bar = st.progress(0, text=progress_text)
+        
+        # Thread-safe storage for AI response
+        response_data = {"done": False, "response": None}
+        
+        def get_ai_response():
+            response_data["response"] = orchestrator.get_conversation_response(conversation_history)
+            response_data["done"] = True
+        
+        # Start AI processing in background thread
+        response_thread = threading.Thread(target=get_ai_response)
+        response_thread.start()
+        
+        # Animate progress bar while AI is thinking
+        progress = 0
+        while not response_data["done"]:
+            progress = min(progress + 15, 85)  # Cap at 85% until complete
+            progress_bar.progress(progress, text=progress_text)
+            time.sleep(0.15)
+        
+        # Complete the progress bar
+        progress_bar.progress(100, text="Done!")
+        response_thread.join()
+        time.sleep(0.2)  # Brief pause to show completion
+        progress_bar.empty()  # Remove progress bar
+        
+        ai_response = response_data["response"]
+        logger.info(f"AI response: {ai_response}")
 
-            # Check if ready to search
-            if "READY_TO_SEARCH" in ai_response:
-                logger.info("AI indicated READY_TO_SEARCH - executing search")
-                orchestrator.execute_search(conversation_history)
-            else:
-                # Continue conversation (ask for clarification)
-                logger.info(f"AI continuing conversation with follow-up question")
-                st.markdown(ai_response)
-                st.session_state.messages.append({"role": "assistant", "content": ai_response})
+        # Check if ready to search
+        if "READY_TO_SEARCH" in ai_response:
+            logger.info("AI indicated READY_TO_SEARCH - executing search")
+            orchestrator.execute_search(conversation_history)
+        else:
+            # Continue conversation (ask for clarification)
+            logger.info(f"AI continuing conversation with follow-up question")
+            st.markdown(ai_response)
+            st.session_state.messages.append({"role": "assistant", "content": ai_response})
 
 
 # Legacy function kept for backward compatibility
