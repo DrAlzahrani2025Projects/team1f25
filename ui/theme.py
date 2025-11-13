@@ -36,9 +36,6 @@ def inject_brand_css():
       h1, .stMarkdown h1 {{
         color: var(--csusb-blue);
       }}
-      .stMarkdown p, .stMarkdown li, .stMarkdown {{
-        color: var(--csusb-black);
-      }}
 
       /* Buttons */
       .stButton > button {{
