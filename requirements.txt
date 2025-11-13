@@ -17,9 +17,7 @@ pydantic>=2.4.0
 requests>=2.32.4
 
 # URL parsing library - fixes CRITICAL and HIGH vulnerabilities
-# Minimum version 2.5.0 addresses: GHSA-www2-v7xj-xrc6 (CRITICAL),
-# GHSA-mh33-7rrq-662w, GHSA-q2q7-5pp4-w6pg, GHSA-hmv2-79q8-fv6g,
-# GHSA-r64q-w8jr-g9qp, GHSA-gwvm-45gx-3cf8, GHSA-wqvq-5m8c-6g24,
+# Minimum version 2.5.0 addresses: GHSA-www2-v7xj-xrc6 (CRITICAL)
 
 urllib3>=2.5.0
 
