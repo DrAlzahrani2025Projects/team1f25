@@ -107,7 +107,7 @@ Required fields:
 - "limit": Number of results (default: 10)
 - "resource_type": "article", "book", "journal", "thesis", or null
 - "date_from": YYYYMMDD string or null (e.g., "20220101")
-- "date_to": YYYYMMDD string or null (e.g., "20251110")
+- "date_to": YYYYMMDD string or null (e.g., "20251112")
 
 RESOURCE TYPE RULES (identify the NOUN, ignore adjectives):
 - "articles" / "journal articles" / "peer reviewed articles" → "article"
@@ -115,9 +115,9 @@ RESOURCE TYPE RULES (identify the NOUN, ignore adjectives):
 - "books" / "ebooks" → "book"
 - "thesis" / "theses" / "dissertation" / "dissertations" → "thesis"
 
-DATE CALCULATION (today = "20251110"):
-- "last N years" → calculate from today (e.g., "last 3 years" = "20221110" to "20251110")
-- "since YYYY" → "YYYYMMDD" to "20251110" (e.g., "since 2019" = "20190101" to "20251110")
+DATE CALCULATION RULES:
+- "last N years" → calculate from today (e.g., "last 3 years" = "20221112" to "20251112")
+- "since YYYY" → "YYYYMMDD" to "20251112" (e.g., "since 2019" = "20190101" to "20251112")
 - "YYYY to YYYY" → "YYYY0101" to "YYYY1231"
 
 Examples:
@@ -129,7 +129,7 @@ User: "Find peer reviewed journals on nursing education"
 {{"query": "nursing education", "limit": 10, "resource_type": "journal"}}
 
 User: "I want research journals about nursing students for last 3 years"
-{{"query": "nursing students", "limit": 10, "resource_type": "journal", "date_from": "20221110", "date_to": "20251110"}}
+{{"query": "nursing students", "limit": 10, "resource_type": "journal", "date_from": "20221112", "date_to": "20251112"}}
 
 User: "Find dissertations on machine learning"
 {{"query": "machine learning", "limit": 10, "resource_type": "thesis"}}
