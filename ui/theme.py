@@ -12,6 +12,8 @@ CSUSB_COLORS = {
     "blue_dark": "#00509a",  # hover/pressed
 }
 
+# Function to get assistant avatar image path.
+# structure, update this path accordingly.
 def get_assistant_avatar() -> str | None:
     """Path to the assistant avatar image (fallback to emoji if missing)."""
     path = "ui/assests/chatbot-icon.png"   # keep your folder name
