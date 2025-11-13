@@ -9,7 +9,7 @@ CSUSB_COLORS = {
     "black": "#000000",
     "gray": "#AAB0B5",
     "white": "#FFFFFF",
-    "blue_dark": "#00509a",  # hover/pressed
+    "blue_dark": "#00509a",  # darker blue used for hover/pressed states
 }
 
 # Function to get assistant avatar image path.
