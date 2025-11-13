@@ -1,4 +1,4 @@
-# ui/theme.py
+# ui/theme.py UI theme helpers used by the Streamlit app.
 import streamlit as st
 import os
 
