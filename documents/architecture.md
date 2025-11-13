@@ -158,10 +158,5 @@ graph TB
 ```
 ## Architecture Overview
 
-### Layer Descriptions
-
-#### 1. 🖥️ User Interface Layer (Streamlit)
-- **`app.py`**: Main application entry point and orchestrator
-- **`ChatOrchestrator`**: Handles user interactions and delegates to business services
 
 
