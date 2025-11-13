@@ -94,4 +94,5 @@ def inject_brand_css():
       }}
     </style>
     """
+    # Inject the stylesheet into the page. `unsafe_allow_html=True` is
     st.markdown(css, unsafe_allow_html=True)
