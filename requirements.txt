@@ -12,11 +12,6 @@ pydantic>=2.4.0
 
 # HTTP library - fixes multiple GHSA vulnerabilities including CRITICAL
 # Minimum version 2.32.4 addresses: GHSA-j8r2-6x86-q33q, GHSA-pg2w-x9wp-vw92,
-# GHSA-cfj3-7x9c-4p3h, GHSA-652x-xj99-gmcc, GHSA-x84v-xcm2-53pg,
-# GHSA-9hjg-9r4m-mvj7, GHSA-9wx4-h78v-vm56
 requests>=2.32.4
-
 urllib3>=2.5.0
-
-# AI client library
 groq>=0.4.0
