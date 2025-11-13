@@ -31,15 +31,7 @@ graph LR
 
 ### 🎯 System Overview
 
-**Scholar AI Assistant** is a conversational AI chatbot that helps users discover academic resources from the CSUSB library through natural language interactions.
 
-| Component | Purpose |
-|-----------|---------|
-| **👤 User** | Researchers and students seeking academic resources |
-| **🖥️ Web Interface** | Streamlit-based chat interface for user interaction |
-| **🧠 AI Engine** | Processes queries, extracts parameters, executes searches |
-| **🤖 Groq LLM** | Provides natural language understanding and generation |
-| **📖 CSUSB Library** | Academic resource database (articles, books, journals) |
 
 
 
