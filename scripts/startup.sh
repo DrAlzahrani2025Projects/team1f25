@@ -13,15 +13,15 @@ echo "Please enter your Groq API key:"
 read -s GROQ_API_KEY
 echo
 
-# Change to project root for Docker commands
+# Change to project root
 cd "$PROJECT_ROOT"
 
-# Build the Docker image
-echo "Building Docker image..."
-DOCKER_BUILDKIT=1 docker build -f docker/Dockerfile -t team1f25-streamlit .
+# Export API key for docker-compose
+export GROQ_API_KEY
 
-# Run the Docker container
-echo "Starting Docker container..."
-docker run -d -p 5001:5001 -e GROQ_API_KEY="$GROQ_API_KEY" --name team1f25 team1f25-streamlit
+# Start services with docker-compose (Nginx + Streamlit with CSP headers)
+echo "Starting application with CSP security headers..."
+docker-compose up -d
 
-echo "Application is running on http://localhost:5001/team1f25"
+echo "✅ Application is running on http://localhost:5001/team1f25"
+echo "🔒 CSP Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none';"
