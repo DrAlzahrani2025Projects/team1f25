@@ -2,8 +2,6 @@
 # Based on SBOM Vulnerability Report analysis
 
 # Web framework - fixes multiple GHSA vulnerabilities
-# Minimum version 1.37.0 addresses: GHSA-rxff-vr5r-8cj5, GHSA-v4hr-4jpx-56gc, 
-# GHSA-9c6g-qp-rvxw, GHSA-8qw9-gf7w-42x5
 streamlit>=1.37.0
 pydantic>=2.4.0
 requests>=2.32.4
