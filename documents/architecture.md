@@ -173,13 +173,4 @@ graph TB
 - **`SuggestionService`**: Generates alternative search suggestions when no results found
 - **`ResultFormatter`**: Parses and formats search results for display
 
-**Interfaces** (Dependency Inversion Principle):
-- **`ILLMClient`**: Contract for Language Model interactions
-- **`ILibraryClient`**: Contract for library database access
-- **`IPromptProvider`**: Contract for prompt template management
-
-#### 3. 🔌 External Clients
-- **`GroqClient`**: Wrapper for Groq LLM API (implements `ILLMClient`)
-- **`CSUSBLibraryClient`**: Wrapper for CSUSB Primo Library API (implements `ILibraryClient`)
-
 
