@@ -26,15 +26,5 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/Dockerfile
-          platforms: linux/amd64
-          load: true
-          tags: ${{ env.IMAGE }}
 
-      - name: Prepare scan directory
-        run: mkdir -p "${{ env.SCAN_DIR }}"
 
