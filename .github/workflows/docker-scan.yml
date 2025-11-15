@@ -14,17 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
-    permissions:
-      contents: read
-      security-events: write
 
-    env:
-      IMAGE: local/team1f25-streamlit:${{ github.sha }}
-      SCAN_DIR: .scan
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
 
 
