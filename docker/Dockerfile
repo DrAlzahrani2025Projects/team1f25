@@ -21,7 +21,6 @@ COPY app.py .
 COPY core/ core/
 COPY ui/ ui/
 
-
 RUN useradd -m appuser && mkdir -p /data && chown -R appuser:appuser /data /app
 
 USER appuser
@@ -29,5 +28,5 @@ USER appuser
 # Expose Streamlit port
 EXPOSE 5001
 
-# Start the Streamlit app 
-CMD ["streamlit", "run", "app.py", "--server.port=5001", "--server.address=0.0.0.0", "--server.enableCORS=false", "--server.baseUrlPath=/team1f25"]
+# Start the Streamlit app
+CMD ["streamlit", "run", "app.py", "--server.port=5001", "--server.address=0.0.0.0", "--server.enableCORS=false", "--server.baseUrlPath=/team1f25", "--server.enableXsrfProtection=true"]
