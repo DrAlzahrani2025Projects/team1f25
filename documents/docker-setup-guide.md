@@ -78,3 +78,5 @@ Explanation of command flags:
 ### Step 5: Open the App
 Once the container is running, open your browser and visit:
 ```bash
+http://localhost:5001/team1f25
+```
