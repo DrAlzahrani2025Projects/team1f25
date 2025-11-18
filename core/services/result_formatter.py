@@ -119,14 +119,9 @@ class ResultFormatter:
         for idx, doc in enumerate(docs, 1):
             article = ResultFormatter.parse_document(doc)
             
-            # Truncate long fields
             title = article["title"]
-            if len(title) > 80:
-                title = title[:80] + "..."
             
             author = article["author"]
-            if len(author) > 40:
-                author = author[:40] + "..."
             
             link = article.get("link", "")
             
