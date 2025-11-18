@@ -66,3 +66,6 @@ Start your app inside a container using:
 ```bash
 docker run -p 5001:5001 -e GROQ_API_KEY="your-key" --name team1f25 team1f25-streamlit
 ```
+*Definition:*  
+A *container* is a running instance of an image.  
+Explanation of command flags:
