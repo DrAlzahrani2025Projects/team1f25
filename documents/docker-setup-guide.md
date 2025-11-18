@@ -24,3 +24,11 @@ docker --version
 This command should display your Docker version, confirming it’s installed correctly.
 
 ---
+
+Verify Docker installation:
+```bash
+docker --version
+```
+This command should display your Docker version, confirming it’s installed correctly.
+
+---
