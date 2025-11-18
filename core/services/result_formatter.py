@@ -25,6 +25,7 @@ class ResultFormatter:
         """Parse a single document from Primo API response."""
         pnx = doc.get("pnx", {})
         display = pnx.get("display", {})
+        sort = pnx.get("sort", {})
         addata = pnx.get("addata", {})
         control = pnx.get("control", {})
         record_id = ResultFormatter._get_first_value(control, "recordid", "")
@@ -40,7 +41,7 @@ class ResultFormatter:
         doi = ResultFormatter._get_first_value(addata, "doi")
         
         # Extract and format date
-        year = ResultFormatter._extract_year(display, addata)
+        year = ResultFormatter._extract_year(sort)
         
         # Build discovery link
         link = ResultFormatter._build_discovery_link(doc, control)
@@ -65,18 +66,14 @@ class ResultFormatter:
         return val[0] if isinstance(val, list) and val else default
     
     @staticmethod
-    def _extract_year(display: Dict, addata: Dict) -> str:
+    def _extract_year(sort: Dict) -> str:
         """Extract year from date fields."""
         # Try display date first, then addata
-        date = ResultFormatter._get_first_value(display, "creationdate")
-        if not date or date == "N/A":
-            date = ResultFormatter._get_first_value(addata, "date")
+        date = ResultFormatter._get_first_value(sort, "creationdate")
         
         # Extract 4-digit year
         if date and date != "N/A":
-            year_match = re.search(r'\b\d{4}\b', date)
-            if year_match:
-                return year_match.group(0)
+            return date[:4]
         
         return "N/A"
     
