@@ -52,3 +52,7 @@ cd (change directory) is a command used to move between folders in your terminal
 ---
 
 ### Step 3: Build the Docker Image
+Create a Docker image (a blueprint of your app) from the Dockerfile:
+```bash
+docker build -f docker/Dockerfile -t team1f25-streamlit .
+```
