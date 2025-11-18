@@ -62,3 +62,7 @@ A *Docker image* is a packaged version of your application, including all depend
 ---
 
 ### Step 4: Run the Container
+Start your app inside a container using:
+```bash
+docker run -p 5001:5001 -e GROQ_API_KEY="your-key" --name team1f25 team1f25-streamlit
+```
