@@ -1,4 +1,3 @@
-
 *Team 1F25 – Scholar AI Assistant*
 
 ---
@@ -24,12 +23,19 @@ docker --version
 This command should display your Docker version, confirming it’s installed correctly.
 
 ---
+
+## Step-by-Step Setup Guide
+
+### Step 1: Clone the Repository
+Download the project files from GitHub using:
+```bash
 git clone https://github.com/DrAlzahrani2025Projects/team1f25.git
 ```
 *Definition:*  
 Cloning a repository means creating a local copy of the project on your computer.
 
 ---
+
 
 ### Step 2: Navigate to the team1f25 project
 Move into the project:
