@@ -80,3 +80,8 @@ Once the container is running, open your browser and visit:
 ```bash
 http://localhost:5001/team1f25
 ```
+Your Scholar Assistant AI application should now be running.
+
+---
+
+## Summary
