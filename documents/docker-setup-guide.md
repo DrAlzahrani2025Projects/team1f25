@@ -85,3 +85,8 @@ Your Scholar Assistant AI application should now be running.
 ---
 
 ## Summary
+
+| Step | Action | Command |
+|------|---------|----------|
+| 1 | Clone the repository | git clone https://github.com/DrAlzahrani2025Projects/team1f25.git |
+| 2 | Navigate to folder | cd team1f25 |
