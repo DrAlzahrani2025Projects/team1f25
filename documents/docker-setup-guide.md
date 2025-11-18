@@ -40,3 +40,10 @@ git clone https://github.com/DrAlzahrani2025Projects/team1f25.git
 Cloning a repository means creating a local copy of the project on your computer.
 
 ---
+
+### Step 2: Navigate to the team1f25 project
+Move into the project:
+```bash
+cd team1f25
+```
+
