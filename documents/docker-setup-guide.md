@@ -74,3 +74,7 @@ Explanation of command flags:
 - --name team1f25 — Names your container “team1f25”.
 
 ---
+
+### Step 5: Open the App
+Once the container is running, open your browser and visit:
+```bash
