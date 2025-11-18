@@ -56,3 +56,9 @@ Create a Docker image (a blueprint of your app) from the Dockerfile:
 ```bash
 docker build -f docker/Dockerfile -t team1f25-streamlit .
 ```
+*Definition:*  
+A *Docker image* is a packaged version of your application, including all dependencies, that can be used to create containers.
+
+---
+
+### Step 4: Run the Container
