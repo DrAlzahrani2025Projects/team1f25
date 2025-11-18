@@ -32,3 +32,11 @@ docker --version
 This command should display your Docker version, confirming it’s installed correctly.
 
 ---
+
+---
+git clone https://github.com/DrAlzahrani2025Projects/team1f25.git
+```
+*Definition:*  
+Cloning a repository means creating a local copy of the project on your computer.
+
+---
