@@ -46,4 +46,9 @@ Move into the project:
 ```bash
 cd team1f25
 ```
+*Definition:*  
+cd (change directory) is a command used to move between folders in your terminal.
 
+---
+
+### Step 3: Build the Docker Image
