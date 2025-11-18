@@ -69,3 +69,8 @@ docker run -p 5001:5001 -e GROQ_API_KEY="your-key" --name team1f25 team1f25-stre
 *Definition:*  
 A *container* is a running instance of an image.  
 Explanation of command flags:
+- -p 5001:5001 — Maps port 5001 on your machine to port 5001 in the container.  
+- -e GROQ_API_KEY="your-key" — Passes your API key as an environment variable.  
+- --name team1f25 — Names your container “team1f25”.
+
+---
