@@ -90,3 +90,6 @@ Your Scholar Assistant AI application should now be running.
 |------|---------|----------|
 | 1 | Clone the repository | git clone https://github.com/DrAlzahrani2025Projects/team1f25.git |
 | 2 | Navigate to folder | cd team1f25 |
+| 3 | Build Docker image | docker build -f docker/Dockerfile -t team1f25-streamlit . |
+| 4 | Run the container | docker run -p 5001:5001 -e GROQ_API_KEY="your-key" --name team1f25 team1f25-streamlit |
+| 5 | Open in browser | http://localhost:5001/team1f25 |
