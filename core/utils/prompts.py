@@ -98,8 +98,10 @@ Required fields:
 - "query": Main search terms (no Boolean operators) - INCLUDE publisher/source names (IEEE, ACM, etc.) in the query
 - "limit": Number of results (default: 10)
 - "resource_type": "article", "book", "thesis", or null
-- "date_from": YYYYMMDD string or null (e.g., "20220101")
-- "date_to": YYYYMMDD string or null (e.g., "20251112")
+- "date_from": YYYYMMDD STRING (8 digits as string) or null (e.g., "20220101", NOT 2022)
+- "date_to": YYYYMMDD STRING (8 digits as string) or null (e.g., "20251118", NOT 2025)
+
+IMPORTANT: Dates MUST be strings with exactly 8 digits (YYYYMMDD format), NOT integers or years alone!
 
 QUERY CONSTRUCTION RULES:
 - Include the main topic/subject

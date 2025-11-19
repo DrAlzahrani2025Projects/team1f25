@@ -46,10 +46,12 @@ for query, expected in test_queries:
         
         # Check if all match requested type
         requested_type = params['resource_type']
-        if all(requested_type in doc_type.lower() for doc_type in type_counts.keys()):
+        if requested_type and all(requested_type in doc_type.lower() for doc_type in type_counts.keys()):
             print(f"✅ SUCCESS: All results are {requested_type}s!")
-        else:
+        elif requested_type:
             print(f"❌ MISMATCH: Got {list(type_counts.keys())} but requested {requested_type}")
+        else:
+            print(f"✓ Results returned (no specific type filter)")
     else:
         print("❌ No results returned")
 
