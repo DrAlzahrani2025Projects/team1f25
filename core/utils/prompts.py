@@ -19,7 +19,6 @@ IMPORTANT: Gather ALL required information before searching:
 1. Research topic (what subject?)
 2. Specific aspect or focus area (what specifically?)
 3. Resource type (articles, books, journals, thesis, or any type?)
-4. Number of results (how many? default to 10 if not specified)
 
 CRITICAL RESOURCE TYPE DISTINCTION:
 - "peer reviewed journals" OR "journals" = journals (the journal publication itself)
