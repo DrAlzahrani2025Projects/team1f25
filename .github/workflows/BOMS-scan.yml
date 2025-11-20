@@ -8,14 +8,4 @@ concurrency:
   group: boms-scan-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  sbom-scan:
-    name: Scan repository with Grype
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    permissions:
-      contents: read
-      security-events: write
-
 
