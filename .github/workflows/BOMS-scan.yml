@@ -36,16 +36,3 @@ jobs:
       - name: Update Grype DB
         run: grype db update -q
 
-      - name: Scan repository with Grype and generate SARIF report
-        # Scanning the repo directory ensures SARIF includes artifact locations that GitHub Code Scanning accepts
-        continue-on-error: true
-        run: |
-          mkdir -p .scan
-          grype dir:. -o sarif > .scan/grype-report.sarif
-
-      - name: Upload SARIF to code scanning
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: .scan/grype-report.sarif
-          category: grype
