@@ -71,17 +71,3 @@ docker run --rm team1f25-tests pytest tests/unit -s
 docker run --rm team1f25-tests pytest tests/unit -x
 ```
 
-### Generate Coverage Report
-
-```bash
-# Coverage with terminal output
-docker run --rm team1f25-tests pytest tests/unit --cov=core --cov-report=term
-
-# Coverage with detailed report
-docker run --rm team1f25-tests pytest tests/unit --cov=core --cov-report=term-missing
-
-# Save coverage HTML report (requires volume mount)
-docker run --rm -v $(pwd)/htmlcov:/app/htmlcov \
-  team1f25-tests pytest tests/unit --cov=core --cov-report=html
-```
-
