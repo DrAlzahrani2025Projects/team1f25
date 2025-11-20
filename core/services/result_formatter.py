@@ -33,7 +33,7 @@ class ResultFormatter:
         
         # Extract basic fields
         title = ResultFormatter._get_first_value(display, "title")
-        author = ResultFormatter._get_first_value(display, "creator")
+        author = ResultFormatter._extract_author(display, sort)
         doc_type = ResultFormatter._get_first_value(display, "type")
         source = ResultFormatter._get_first_value(display, "source")
         publisher = ResultFormatter._get_first_value(addata, "pub")
@@ -41,7 +41,7 @@ class ResultFormatter:
         doi = ResultFormatter._get_first_value(addata, "doi")
         
         # Extract and format date
-        year = ResultFormatter._extract_year(sort)
+        year = ResultFormatter._extract_year(sort, display, addata)
         
         # Build discovery link
         link = ResultFormatter._build_discovery_link(doc, control)
@@ -64,13 +64,32 @@ class ResultFormatter:
         """Get first item from list or return default."""
         val = data.get(key, [])
         return val[0] if isinstance(val, list) and val else default
-    
+
     @staticmethod
-    def _extract_year(sort: Dict) -> str:
+    def _extract_author(display: Dict, sort: Dict) -> str:
+        """Extract author from display data."""
+        authors = ResultFormatter._get_first_value(display, "creator")
+        if authors and authors != "N/A":
+            if "$$" in authors:
+                authors = ResultFormatter._get_first_value(sort, "author")
+                if authors and authors != "N/A":
+                    return authors
+            else:
+                return authors
+        
+        return "N/A"
+
+    @staticmethod
+    def _extract_year(sort: Dict, display: Dict, addata: Dict) -> str:
         """Extract year from date fields."""
         # Try display date first, then addata
         date = ResultFormatter._get_first_value(sort, "creationdate")
-        
+
+        if not date or date == "N/A":
+            date = ResultFormatter._get_first_value(display, "creationdate")
+        if not date or date == "N/A":
+            date = ResultFormatter._get_first_value(addata, "date")
+
         # Extract 4-digit year
         if date and date != "N/A":
             return date[:4]

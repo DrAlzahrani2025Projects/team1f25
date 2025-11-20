@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Run the cleanup script first
-"$SCRIPT_DIR/cleanup.sh" --hard > /dev/null 2>&1 || true
+"$SCRIPT_DIR/cleanup.sh" > /dev/null 2>&1 || true
 
 # Ask for the API key
 echo "Please enter your Groq API key:"
