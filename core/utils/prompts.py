@@ -99,7 +99,7 @@ Required fields:
 - "limit": Number of results (default: 10)
 - "resource_type": "article", "book", "thesis", or null
 - "date_from": YYYYMMDD STRING (8 digits as string) or null (e.g., "20220101", NOT 2022)
-- "date_to": YYYYMMDD STRING (8 digits as string) or null (e.g., "20251118", NOT 2025)
+- "date_to": YYYYMMDD STRING (8 digits as string) or null (e.g., "20251231", NOT 2025)
 
 IMPORTANT: Dates MUST be strings with exactly 8 digits (YYYYMMDD format), NOT integers or years alone!
 
@@ -114,9 +114,9 @@ RESOURCE TYPE RULES (identify the NOUN, ignore adjectives):
 - "thesis" / "theses" / "dissertation" / "dissertations" → "thesis"
 
 DATE CALCULATION RULES (Current Year = 2025):
-- "last N years" → Current Year - N + 1 to Current Year (e.g., "last 3 years" = "20230101" to "20251118")
-- "past N years" → Current Year - N + 1 to Current Year (e.g., "past 5 years" = "20210101" to "20251118")
-- "since YYYY" → "YYYYMMDD" to "20251118" (e.g., "since 2019" = "20190101" to "20251118")
+- "last N years" → Current Year - N + 1 to Current Year (e.g., "last 3 years" = "20230101" to "20251231")
+- "past N years" → Current Year - N + 1 to Current Year (e.g., "past 5 years" = "20210101" to "20251231")
+- "since YYYY" → "YYYYMMDD" to "20251231" (e.g., "since 2019" = "20190101" to "20251231")
 - "YYYY to YYYY" → "YYYY0101" to "YYYY1231"
 
 Examples:
@@ -128,10 +128,10 @@ User: "Find peer reviewed journals on nursing education"
 {{"query": "nursing education", "limit": 10, "resource_type": "article"}}
 
 User: "I want research journals about nursing students for last 3 years"
-{{"query": "nursing students", "limit": 10, "resource_type": "article", "date_from": "20230101", "date_to": "20251118"}}
+{{"query": "nursing students", "limit": 10, "resource_type": "article", "date_from": "20230101", "date_to": "20251231"}}
 
 User: "I want peer reviewed journals about academically at risk nursing students from IEEE/ACM for last 3 years"
-{{"query": "academically at risk nursing students IEEE/ACM", "limit": 10, "resource_type": "article", "date_from": "20230101", "date_to": "20251118"}}
+{{"query": "academically at risk nursing students IEEE/ACM", "limit": 10, "resource_type": "article", "date_from": "20230101", "date_to": "20251231"}}
 
 User: "Find dissertations on machine learning"
 {{"query": "machine learning", "limit": 10, "resource_type": "thesis"}}
