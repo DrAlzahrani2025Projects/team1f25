@@ -179,28 +179,3 @@ docker run -p 5001:5001 \
   -e GROQ_API_KEY="your-key" \
   team1f25-app
 ```
-
-## Best Practices
-
-### Development Workflow
-
-1. **Build once:**
-   ```bash
-   docker build -f docker/Dockerfile -t team1f25-app .
-   docker build -f docker/Dockerfile.test -t team1f25-tests .
-   ```
-
-2. **Run unit tests frequently:**
-   ```bash
-   docker run --rm team1f25-tests
-   ```
-
-3. **Run integration tests before commit:**
-   ```bash
-   docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pytest.py all
-   ```
-
-4. **Test the app locally:**
-   ```bash
-   docker run -p 5001:5001 -e GROQ_API_KEY="your-key" team1f25-app
-   ```
