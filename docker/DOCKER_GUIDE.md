@@ -204,24 +204,3 @@ docker run -p 5001:5001 \
    ```bash
    docker run -p 5001:5001 -e GROQ_API_KEY="your-key" team1f25-app
    ```
-
-## Quick Reference
-
-```bash
-# Production
-docker build -f docker/Dockerfile -t team1f25-app .
-docker run -p 5001:5001 -e GROQ_API_KEY="key" team1f25-app
-
-# Tests (unit - fast)
-docker build -f docker/Dockerfile.test -t team1f25-tests .
-docker run --rm team1f25-tests
-
-# Tests (integration - requires API key)
-docker run --rm -e GROQ_API_KEY="key" team1f25-tests python scripts/run_pytest.py integration
-
-# Tests (all)
-docker run --rm -e GROQ_API_KEY="key" team1f25-tests python scripts/run_pytest.py all
-
-# Cleanup
-docker system prune -a
-```
