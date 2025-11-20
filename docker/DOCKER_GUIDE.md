@@ -57,17 +57,3 @@ docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pyt
 # Run legacy tests
 docker run --rm -e GROQ_API_KEY="your-key" team1f25-tests python scripts/run_pytest.py legacy
 ```
-
-### Run with Verbose Output
-
-```bash
-# Verbose unit tests
-docker run --rm team1f25-tests pytest tests/unit -vv
-
-# Show print statements
-docker run --rm team1f25-tests pytest tests/unit -s
-
-# Stop on first failure
-docker run --rm team1f25-tests pytest tests/unit -x
-```
-
