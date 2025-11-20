@@ -4,8 +4,3 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
-concurrency:
-  group: boms-scan-${{ github.ref }}
-  cancel-in-progress: true
-
-
