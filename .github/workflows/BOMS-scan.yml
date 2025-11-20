@@ -2,5 +2,3 @@ name: SBOM Scan with Grype
 on:
   push:
     branches: ["main"]
-  workflow_dispatch:
-
