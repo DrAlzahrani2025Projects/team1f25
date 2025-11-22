@@ -76,7 +76,7 @@ class ChatOrchestrator:
 
             clarifying = (
                 f"When would you like the {resource_label} from? "
-                "You can answer with examples like: 'last 5 years', '2015-2018', 'since 2019', or 'any time'."
+                "You can answer with examples like: 'last 5 years', '2015-2018', 'since 2019', '2020' (for just that year), or 'any time'."
             )
             logger.info(f"Requesting date clarification: {clarifying}")
             st.markdown(clarifying)

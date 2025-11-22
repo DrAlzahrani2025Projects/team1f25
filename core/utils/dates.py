@@ -176,11 +176,14 @@ def _extract_quarter(text: str) -> Tuple[Optional[int], Optional[int]]:
     return None, None
 
 # Single year extraction helper
-def _extract_single_year(text: str) -> Tuple[Optional[int], None]:
-    """Extract single year mention like '1999'.
+def _extract_single_year(text: str) -> Tuple[Optional[int], Optional[int]]:
+    """Extract single year mention like '1999' or '2020'.
+    
+    When a user provides just a year (e.g., "2020"), it should be interpreted
+    as the entire year (2020-01-01 to 2020-12-31), not open-ended.
     
     Returns:
-        Tuple[Optional[int], None]: (YYYY, None) or (None, None).
+        Tuple[Optional[int], Optional[int]]: (YYYY, YYYY) for closed range or (None, None).
     """
     # Look for explicit phrasing that indicates a closed single-year range
     # e.g., 'in 2018', 'for 2018', 'during 2018' -> interpret as that full year
@@ -189,13 +192,12 @@ def _extract_single_year(text: str) -> Tuple[Optional[int], None]:
         year = int(m_closed.group(0).split()[-1])
         return year, year
 
-    # Default: bare year mention without explicit preposition -> treat as
-    # a year-bound lower bound (open-ended) so callers can decide how to
-    # expand or clamp (e.g., 'since 2018' or '1999').
+    # Default: bare year mention (e.g., "2020") -> interpret as full year
+    # This handles cases where user answers date clarification with just a year
     m = re.search(r"\b(19|20)\d{2}\b", text)
     if m:
         year = int(m.group(0))
-        return year, None
+        return year, year  # Changed from (year, None) to (year, year)
     return None, None
 
 # Date normalization function
