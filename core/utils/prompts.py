@@ -94,9 +94,19 @@ IMPORTANT: Stay strictly within the scope of scholarly research assistance. Redi
 Conversation:
 {conversation_text}
 
+IMPORTANT: This may be a NEW search OR a REFINEMENT of a previous search.
+
+REFINEMENT INDICATORS:
+- User says "only 2022", "just 2020", "from 2019 to 2021" → Date refinement only
+- User says "books instead", "change to articles" → Resource type refinement only
+- User says "show 5", "limit to 3" → Limit refinement only
+
+For REFINEMENTS: Only extract the parameter being changed. Set other fields to null.
+For NEW SEARCHES: Extract all available parameters.
+
 Required fields:
-- "query": Main search terms (no Boolean operators) - INCLUDE publisher/source names (IEEE, ACM, etc.) in the query
-- "limit": Number of results (default: 10)
+- "query": Main search terms (no Boolean operators) - INCLUDE publisher/source names (IEEE, ACM, etc.) in the query. Use null if only refining other parameters.
+- "limit": Number of results (default: 10). Only set if explicitly mentioned.
 - "resource_type": "article", "book", "thesis", or null
 - "date_from": YYYYMMDD STRING (8 digits as string) or null (e.g., "20220101", NOT 2022)
 - "date_to": YYYYMMDD STRING (8 digits as string) or null (e.g., "20251231", NOT 2025)
@@ -107,6 +117,7 @@ QUERY CONSTRUCTION RULES:
 - Include the main topic/subject
 - If publisher/source is mentioned (IEEE, ACM, Springer, etc.), append it to the query
 - Example: "nursing students IEEE" or "machine learning ACM"
+- For refinements like "only 2022", set query to null
 
 RESOURCE TYPE RULES (identify the NOUN, ignore adjectives):
 - "articles" / "journal articles" / "peer reviewed articles" / "journals" / "peer reviewed journals" / "research journals" → "article"
@@ -118,29 +129,28 @@ DATE CALCULATION RULES (Current Year = 2025):
 - "past N years" → Current Year - N + 1 to Current Year (e.g., "past 5 years" = "20210101" to "20251231")
 - "since YYYY" → "YYYYMMDD" to "20251231" (e.g., "since 2019" = "20190101" to "20251231")
 - "YYYY to YYYY" → "YYYY0101" to "YYYY1231"
+- "only YYYY" or "just YYYY" → "YYYY0101" to "YYYY1231" (e.g., "only 2022" = "20220101" to "20221231")
+- "in YYYY" or "from YYYY" → "YYYY0101" to "YYYY1231"
 
 Examples:
 
+NEW SEARCH:
 User: "I need 5 articles about machine learning"
-{{"query": "machine learning", "limit": 5, "resource_type": "article"}}
+{{"query": "machine learning", "limit": 5, "resource_type": "article", "date_from": null, "date_to": null}}
 
-User: "Find peer reviewed journals on nursing education"
-{{"query": "nursing education", "limit": 10, "resource_type": "article"}}
+REFINEMENT (date only):
+Previous search was about "llm chatbot prompt injection"
+User: "only 2022"
+{{"query": null, "limit": null, "resource_type": null, "date_from": "20220101", "date_to": "20221231"}}
 
-User: "I want research journals about nursing students for last 3 years"
-{{"query": "nursing students", "limit": 10, "resource_type": "article", "date_from": "20230101", "date_to": "20251231"}}
+REFINEMENT (resource type):
+Previous search was about "nursing education"
+User: "books instead"
+{{"query": null, "limit": null, "resource_type": "book", "date_from": null, "date_to": null}}
 
-User: "I want peer reviewed journals about academically at risk nursing students from IEEE/ACM for last 3 years"
-{{"query": "academically at risk nursing students IEEE/ACM", "limit": 10, "resource_type": "article", "date_from": "20230101", "date_to": "20251231"}}
-
-User: "Find dissertations on machine learning"
-{{"query": "machine learning", "limit": 10, "resource_type": "thesis"}}
-
-User: "Get books on climate change"
-{{"query": "climate change", "limit": 10, "resource_type": "book"}}
-
-User: "Show me research on diabetes"
-{{"query": "diabetes", "limit": 10, "resource_type": null}}
+NEW SEARCH with dates:
+User: "Find peer reviewed journals on nursing education from last 3 years"
+{{"query": "nursing education", "limit": 10, "resource_type": "article", "date_from": "20230101", "date_to": "20251231"}}
 
 Respond with ONLY valid JSON, nothing else."""
     

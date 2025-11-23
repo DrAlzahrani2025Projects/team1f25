@@ -24,6 +24,9 @@ def initialize_session_state():
     
     if "search_results" not in st.session_state:
         st.session_state.search_results = None
+    
+    if "last_search_params" not in st.session_state:
+        st.session_state.last_search_params = None
 
 # track whether filters are active
 def reset_session_state():
@@ -41,6 +44,7 @@ def reset_session_state():
         "additional_info": None
     }
     st.session_state.search_results = None
+    st.session_state.last_search_params = None
 
     # track whether filters are active
     if "filters_active" not in st.session_state:

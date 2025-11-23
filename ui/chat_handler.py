@@ -52,10 +52,30 @@ class ChatOrchestrator:
     
     def execute_search(self, conversation_history: list):
         """Execute search and handle results."""
-        # Extract parameters
-        params = self.analyzer.extract_search_parameters(conversation_history)
-        search_query = params.get("query", "research")
-        limit = params.get("limit", 10)
+        # Extract parameters - pass previous params for refinement detection
+        previous_params = st.session_state.get("last_search_params")
+        logger.info(f"Previous search params available: {previous_params is not None}")
+        if previous_params:
+            logger.info(f"Previous params: {previous_params}")
+        
+        params = self.analyzer.extract_search_parameters(conversation_history, previous_params)
+        logger.info(f"Extracted params before fallback: {params}")
+        
+        # If params has None values, fill from previous params as fallback
+        if previous_params:
+            if params.get("query") is None and previous_params.get("query"):
+                params["query"] = previous_params["query"]
+                logger.info(f"Using previous query: {params['query']}")
+            if params.get("limit") is None and previous_params.get("limit"):
+                params["limit"] = previous_params["limit"]
+                logger.info(f"Using previous limit: {params['limit']}")
+            if params.get("resource_type") is None and previous_params.get("resource_type"):
+                params["resource_type"] = previous_params["resource_type"]
+                logger.info(f"Using previous resource_type: {params['resource_type']}")
+        
+        # Use the params or defaults
+        search_query = params.get("query") or "research"
+        limit = params.get("limit") or 10
         resource_type = params.get("resource_type")
         # Date filters: prefer explicit LLM-extracted params, else use sidebar selections
         date_from = params.get("date_from") if params.get("date_from") is not None else st.session_state.user_requirements.get("date_from")
@@ -130,8 +150,20 @@ class ChatOrchestrator:
         
         results = search_data["results"]
 
-        # Handle results
+        # Store successful search parameters BEFORE handling results (which may call st.rerun())
+        if results and len(results.get("docs", [])) > 0:
+            st.session_state.last_search_params = {
+                "query": search_query,
+                "limit": limit,
+                "resource_type": resource_type,
+                "date_from": date_from,
+                "date_to": date_to
+            }
+            logger.info(f"Stored search params for refinement: {st.session_state.last_search_params}")
+
+        # Handle results (may call st.rerun() which stops execution)
         self._handle_search_results(results, search_query, resource_type)
+    
     # Display search initiation message
     def _display_search_message(self, query: str, limit: int, resource_type: Optional[str]):
         """Display search initiation message."""
@@ -247,6 +279,12 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar=get_user_avatar()):
         st.markdown(prompt)
+    
+    # Check if user wants to start a completely new search (clear previous context)
+    new_search_indicators = ["new search", "another research", "different research", "start over", "new topic"]
+    if any(indicator in prompt.lower() for indicator in new_search_indicators):
+        logger.info("User indicated new search - clearing previous search context")
+        st.session_state.last_search_params = None
 
     # Process message
     with st.chat_message("assistant", avatar=get_assistant_avatar()):
@@ -254,11 +292,39 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
         import threading
         
         conversation_history = st.session_state.messages.copy()
+        
+        # Check if this is an off-topic question that should be redirected
+        if orchestrator.analyzer.is_off_topic_question(prompt):
+            logger.info("Off-topic question detected - redirecting to research focus")
+            redirect_msg = "I'm a scholarly research assistant designed to help you find academic resources. What research topic would you like to explore?"
+            st.markdown(redirect_msg)
+            st.session_state.messages.append({"role": "assistant", "content": redirect_msg})
+            return
+
+        # Check if this is a refinement of previous search
+        # Only check for refinement if we have previous search params AND it's not a new search request
+        previous_params = st.session_state.get("last_search_params")
+        is_refinement = False
+        
+        # Don't treat as refinement if we just cleared the context
+        new_search_indicators = ["new search", "another research", "different research", "start over", "new topic"]
+        is_new_search_request = any(indicator in prompt.lower() for indicator in new_search_indicators)
+        
+        if previous_params and not is_new_search_request:
+            is_refinement = orchestrator.analyzer.is_refinement_query(prompt)
+            if is_refinement:
+                logger.info("Detected refinement query - will execute refined search")
 
         # Check if trigger keywords present (indicates intent to search)
         has_trigger = orchestrator.analyzer.should_trigger_search(prompt)
         if has_trigger:
             logger.info("Trigger keyword detected - checking if query is complete")
+        
+        # If it's a refinement, skip conversation and go straight to search
+        if is_refinement:
+            logger.info("Executing refined search immediately")
+            orchestrator.execute_search(conversation_history)
+            return
         
         # Show progress bar while getting AI response
         progress_text = "Thinking..."

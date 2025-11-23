@@ -183,8 +183,8 @@ def _extract_single_year(text: str) -> Tuple[Optional[int], None]:
         Tuple[Optional[int], None]: (YYYY, None) or (None, None).
     """
     # Look for explicit phrasing that indicates a closed single-year range
-    # e.g., 'in 2018', 'for 2018', 'during 2018' -> interpret as that full year
-    m_closed = re.search(r"\b(?:in|for|during|on)\s+(19|20)\d{2}\b", text)
+    # e.g., 'in 2018', 'for 2018', 'during 2018', 'only 2022', 'just 2020' -> interpret as that full year
+    m_closed = re.search(r"\b(?:in|for|during|on|only|just)\s+(19|20)\d{2}\b", text)
     if m_closed:
         year = int(m_closed.group(0).split()[-1])
         return year, year
