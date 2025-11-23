@@ -72,6 +72,27 @@ class ConversationAnalyzer:
         
         return False
     
+    def is_metadata_question(self, user_input: str) -> bool:
+        """Check if user is asking about metadata or search result statistics."""
+        user_input_lower = user_input.lower().strip()
+        
+        # Metadata question patterns
+        metadata_patterns = [
+            "how many", "total", "count", "number of", "all the results",
+            "show all", "display all", "list all", "what's the",
+            "more do you have", "many results", "many more", "how much"
+        ]
+        
+        # Result-related keywords
+        result_keywords = ["result", "results", "article", "articles", "record", "records"]
+        
+        # Check if it's asking about metadata
+        has_metadata_pattern = any(pattern in user_input_lower for pattern in metadata_patterns)
+        has_result_keyword = any(keyword in user_input_lower for keyword in result_keywords)
+        
+        # It's a metadata question if it has both patterns
+        return has_metadata_pattern and (has_result_keyword or len(user_input.split()) < 8)
+    
     def should_trigger_search(self, user_input: str) -> bool:
         """Check if user explicitly wants to trigger a search."""
         user_input_lower = user_input.lower()
