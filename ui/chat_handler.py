@@ -293,10 +293,18 @@ def handle_user_message(prompt: str, groq_client: GroqClient):
         
         conversation_history = st.session_state.messages.copy()
         
+        # Check if this is a metadata question that should get a special response
+        if orchestrator.analyzer.is_metadata_question(prompt):
+            logger.info("Metadata question detected - providing custom response")
+            metadata_msg = "The metadata information is not at my disposal. I'm a scholarly research assistant designed to help you find academic resources only. What research topic would you like to explore?"
+            st.markdown(metadata_msg)
+            st.session_state.messages.append({"role": "assistant", "content": metadata_msg})
+            return
+        
         # Check if this is an off-topic question that should be redirected
         if orchestrator.analyzer.is_off_topic_question(prompt):
             logger.info("Off-topic question detected - redirecting to research focus")
-            redirect_msg = "I'm a scholarly research assistant designed to help you find academic resources. What research topic would you like to explore?"
+            redirect_msg = "I'm a scholarly research assistant designed to help you find academic resources only. What research topic would you like to explore?"
             st.markdown(redirect_msg)
             st.session_state.messages.append({"role": "assistant", "content": redirect_msg})
             return
