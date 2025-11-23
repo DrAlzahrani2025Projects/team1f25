@@ -89,10 +89,7 @@ def display_results_table(results: Dict[str, Any]):
 def _display_result_count(found: int, total: int):
     """Display information about result count."""
     if total > 0:
-        if found < total and found < 10:
-            st.info(f"Found {found} result(s) out of {total} available in the database.")
-        else:
-            st.success(f"Found {found} result(s)")
+        st.success(f"Found {found} result(s) out of {total} available in the database.")
     else:
         st.success(f"Found {found} result(s)")
 
