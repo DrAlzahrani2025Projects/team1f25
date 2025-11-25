@@ -10,7 +10,7 @@ def render_sidebar():
     with st.sidebar:
 
         # Center the button or make it full width
-        new_search = st.button("Start New Search", use_container_width=True)
+        new_search = st.button("Start New Search", width='stretch')
 
         st.divider()
 
@@ -68,7 +68,7 @@ def display_results_table(results: Dict[str, Any]):
     # Display as dataframe with proper configuration
     st.dataframe(
         table_data,
-        use_container_width=True,
+        width='stretch',
         hide_index=True,
         column_config={
             "#": st.column_config.NumberColumn("#", width="small"),
@@ -89,10 +89,7 @@ def display_results_table(results: Dict[str, Any]):
 def _display_result_count(found: int, total: int):
     """Display information about result count."""
     if total > 0:
-        if found < total and found < 10:
-            st.info(f"Found {found} result(s) out of {total} available in the database.")
-        else:
-            st.success(f"Found {found} result(s)")
+        st.success(f"Found {found} result(s) out of {total} available in the database.")
     else:
         st.success(f"Found {found} result(s)")
 
